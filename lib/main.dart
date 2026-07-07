@@ -5,6 +5,7 @@ import 'app/database/isar_database.dart';
 import 'features/streaks/presentation/pages/home_page.dart';
 
 import 'app/theme/app_theme.dart';
+import 'app/router/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,14 +24,14 @@ class StreakApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
 
-      themeMode: ThemeMode.dark,
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
 
-      home: const HomePage(),
+      routerConfig: appRouter,
     );
   }
 }
