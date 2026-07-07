@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:streak_app/app/router/app_router.dart';
@@ -10,7 +11,11 @@ void main() {
   });
 
   testWidgets('shows create streak form from dashboard', (tester) async {
-    await tester.pumpWidget(const StreakApp());
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: StreakApp(),
+      ),
+    );
 
     expect(find.text('Dashboard'), findsOneWidget);
 
@@ -22,8 +27,24 @@ void main() {
     expect(find.byType(TextFormField), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('shows dashboard streak overview', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: StreakApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Your streaks'), findsOneWidget);
+  });
+
   testWidgets('shows validation errors for invalid streak title', (tester) async {
-    await tester.pumpWidget(const StreakApp());
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: StreakApp(),
+      ),
+    );
 
     await tester.tap(find.text('Create Streak'));
     await tester.pumpAndSettle();
