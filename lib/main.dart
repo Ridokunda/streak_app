@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/database/isar_database.dart';
-import 'features/streaks/presentation/pages/home_page.dart';
 
 import 'app/theme/app_theme.dart';
 import 'app/router/app_router.dart';
