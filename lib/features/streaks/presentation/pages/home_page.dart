@@ -64,9 +64,12 @@ class HomePage extends ConsumerWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () async {
+                      if (streak.id == null) {
+                        return;
+                      }
                       await ref
                           .read(streakRepositoryProvider)
-                          .delete(streak.id);
+                          .delete(streak.id!);
                     },
                   ),
                 ),

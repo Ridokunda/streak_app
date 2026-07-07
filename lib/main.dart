@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app/database/isar_database.dart';
-
+import 'app/database/drift_database.dart';
 import 'app/theme/app_theme.dart';
 import 'app/router/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await IsarDatabase.instance();
+  await AppDatabase.instance();
 
   runApp(
     const ProviderScope(

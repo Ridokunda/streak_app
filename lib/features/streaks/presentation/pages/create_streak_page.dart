@@ -32,8 +32,7 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
     }
 
     final repository = ref.read(streakRepositoryProvider);
-
-    await repository.add(
+    final createdId = await repository.add(
       Streak(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
@@ -45,7 +44,7 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
     );
 
     if (!mounted) return;
-    context.pop();
+    context.go('/streaks/$createdId');
   }
 
   @override
@@ -72,8 +71,15 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.isEmpty) {
                     return 'Please enter a title';
+                  }
+                  if (trimmed.length < 3) {
+                    return 'Title must be at least 3 characters';
+                  }
+                  if (trimmed.length > 50) {
+                    return 'Title must be at most 50 characters';
                   }
                   return null;
                 },
@@ -86,6 +92,13 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                   labelText: 'Description (optional)',
                   border: OutlineInputBorder(),
                 ),
+                validator: (value) {
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.length > 160) {
+                    return 'Description must be at most 160 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<Frequency>(
