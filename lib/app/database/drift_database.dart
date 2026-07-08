@@ -15,6 +15,8 @@ class StreaksTable extends Table {
   TextColumn get scheduledDays => text().withDefault(const Constant('[]'))();
   IntColumn get reminderHour => integer().withDefault(const Constant(20))();
   IntColumn get reminderMinute => integer().withDefault(const Constant(0))();
+  BoolColumn get remindersEnabled => boolean().withDefault(const Constant(false))();
+  TextColumn get reminderTimes => text().withDefault(const Constant('[]'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get lastCompleted => dateTime().nullable()();
   DateTimeColumn get lastFreezeUsed => dateTime().nullable()();
@@ -53,7 +55,17 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            await migrator.addColumn(streaksTable, streaksTable.remindersEnabled);
+            await migrator.addColumn(streaksTable, streaksTable.reminderTimes);
+          }
+        },
+      );
 
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {

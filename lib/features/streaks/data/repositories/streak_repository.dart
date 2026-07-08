@@ -5,19 +5,30 @@ import 'package:drift/drift.dart';
 
 import '../../../../app/database/drift_database.dart';
 import '../../../../core/enums/frequency.dart';
+import '../../../notifications/data/services/reminder_notification_service.dart';
 import '../models/completion.dart';
 import '../models/streak.dart';
 
 class StreakRepository {
-  StreakRepository({AppDatabase? db}) : _db = db;
+  StreakRepository({AppDatabase? db, bool? syncNotifications})
+      : _db = db,
+        _syncNotifications = syncNotifications ?? db == null;
 
   final AppDatabase? _db;
+  final bool _syncNotifications;
 
   Future<AppDatabase> get _dbInstance async => _db ?? await AppDatabase.instance();
 
   Future<int> add(Streak streak) async {
     final db = await _dbInstance;
-    return db.into(db.streaksTable).insert(_streakToCompanion(streak));
+    final id = await db.into(db.streaksTable).insert(_streakToCompanion(streak));
+
+    if (_syncNotifications) {
+      streak.id = id;
+      await ReminderNotificationService.instance.syncStreakReminders(streak);
+    }
+
+    return id;
   }
 
   Future<List<Streak>> getAll() async {
@@ -75,23 +86,59 @@ class StreakRepository {
         return;
       }
 
+      final today = DateTime(date.year, date.month, date.day);
+      var usedFreeze = false;
+      var newFreezeCount = streakRow.freezeCount;
+      var newCurrentStreak = streakRow.currentStreak;
+      var lastFreezeUsed = streakRow.lastFreezeUsed;
+
+      if (streakRow.lastCompleted != null) {
+        final previousDay = DateTime(
+          streakRow.lastCompleted!.year,
+          streakRow.lastCompleted!.month,
+          streakRow.lastCompleted!.day,
+        );
+        final gapDays = today.difference(previousDay).inDays;
+
+        if (gapDays <= 0) {
+          return;
+        }
+
+        if (gapDays == 1) {
+          newCurrentStreak = streakRow.currentStreak + 1;
+        } else {
+          final missedDays = gapDays - 1;
+          if (newFreezeCount >= missedDays) {
+            usedFreeze = true;
+            newFreezeCount -= missedDays;
+            lastFreezeUsed = today;
+            newCurrentStreak = streakRow.currentStreak + 1;
+          } else {
+            newCurrentStreak = 1;
+          }
+        }
+      } else {
+        newCurrentStreak = 1;
+      }
+
       await db.into(db.completionsTable).insert(
         CompletionsTableCompanion.insert(
           streakId: streakId,
           completedDate: date,
-          usedFreeze: const Value(false),
+          usedFreeze: Value(usedFreeze),
         ),
       );
 
-      final today = DateTime(date.year, date.month, date.day);
-      final yesterday = today.subtract(const Duration(days: 1));
-      final previousCompletion = existingCompletions.where((completion) {
-        return completion.completedDate.year == yesterday.year &&
-            completion.completedDate.month == yesterday.month &&
-            completion.completedDate.day == yesterday.day;
-      }).toList();
+      var completedSinceFreeze = streakRow.completedSinceFreeze + 1;
+      while (completedSinceFreeze >= 5 && newFreezeCount < 3) {
+        completedSinceFreeze -= 5;
+        newFreezeCount += 1;
+      }
 
-      final newCurrentStreak = previousCompletion.isEmpty ? 1 : streakRow.currentStreak + 1;
+      if (newFreezeCount >= 3 && completedSinceFreeze > 4) {
+        completedSinceFreeze = 4;
+      }
+
       await (db.update(db.streaksTable)
             ..where((t) => t.id.equals(streakId)))
           .write(
@@ -99,7 +146,9 @@ class StreakRepository {
           currentStreak: Value(newCurrentStreak),
           longestStreak: Value(max(streakRow.longestStreak, newCurrentStreak)),
           lastCompleted: Value(today),
-          completedSinceFreeze: Value(streakRow.completedSinceFreeze + 1),
+          freezeCount: Value(newFreezeCount),
+          lastFreezeUsed: Value(lastFreezeUsed),
+          completedSinceFreeze: Value(completedSinceFreeze),
         ),
       );
     });
@@ -107,6 +156,10 @@ class StreakRepository {
 
   Future<void> delete(int id) async {
     final db = await _dbInstance;
+
+    if (_syncNotifications) {
+      await ReminderNotificationService.instance.cancelStreakReminders(id);
+    }
 
     await db.transaction(() async {
       await (db.delete(db.completionsTable)
@@ -125,16 +178,25 @@ class StreakRepository {
     }
 
     await db.update(db.streaksTable).replace(_streakToData(streak));
+
+    if (_syncNotifications) {
+      await ReminderNotificationService.instance.syncStreakReminders(streak);
+    }
   }
 
   StreaksTableCompanion _streakToCompanion(Streak streak) {
+    final firstReminderMinute =
+        streak.reminderTimes.isEmpty ? 20 * 60 : streak.reminderTimes.first;
+
     return StreaksTableCompanion(
       title: Value(streak.title),
       description: Value(streak.description),
       frequency: Value(streak.frequency.name),
       scheduledDays: Value(jsonEncode(streak.scheduledDays)),
-      reminderHour: Value(streak.reminderHour),
-      reminderMinute: Value(streak.reminderMinute),
+      reminderHour: Value(firstReminderMinute ~/ 60),
+      reminderMinute: Value(firstReminderMinute % 60),
+      remindersEnabled: Value(streak.remindersEnabled),
+      reminderTimes: Value(jsonEncode(streak.reminderTimes)),
       createdAt: Value(streak.createdAt),
       lastCompleted: Value(streak.lastCompleted),
       lastFreezeUsed: Value(streak.lastFreezeUsed),
@@ -147,14 +209,19 @@ class StreakRepository {
   }
 
   StreaksTableData _streakToData(Streak streak) {
+    final firstReminderMinute =
+        streak.reminderTimes.isEmpty ? 20 * 60 : streak.reminderTimes.first;
+
     return StreaksTableData(
       id: streak.id ?? 0,
       title: streak.title,
       description: streak.description,
       frequency: streak.frequency.name,
       scheduledDays: jsonEncode(streak.scheduledDays),
-      reminderHour: streak.reminderHour,
-      reminderMinute: streak.reminderMinute,
+      reminderHour: firstReminderMinute ~/ 60,
+      reminderMinute: firstReminderMinute % 60,
+      remindersEnabled: streak.remindersEnabled,
+      reminderTimes: jsonEncode(streak.reminderTimes),
       createdAt: streak.createdAt,
       lastCompleted: streak.lastCompleted,
       lastFreezeUsed: streak.lastFreezeUsed,
@@ -167,6 +234,16 @@ class StreakRepository {
   }
 
   Streak _streakFromRow(StreaksTableData row) {
+    final decodedReminderTimes = row.reminderTimes.isEmpty
+        ? <int>[]
+        : (jsonDecode(row.reminderTimes) as List)
+            .map((value) => int.parse(value.toString()))
+            .toList();
+
+    final reminderTimes = decodedReminderTimes.isNotEmpty
+      ? decodedReminderTimes
+      : (row.remindersEnabled ? <int>[row.reminderHour * 60 + row.reminderMinute] : <int>[]);
+
     return Streak(
       id: row.id,
       title: row.title,
@@ -180,8 +257,8 @@ class StreakRepository {
           : (jsonDecode(row.scheduledDays) as List)
               .map((value) => int.parse(value.toString()))
               .toList(),
-      reminderHour: row.reminderHour,
-      reminderMinute: row.reminderMinute,
+        remindersEnabled: row.remindersEnabled,
+        reminderTimes: reminderTimes,
       createdAt: row.createdAt,
       lastCompleted: row.lastCompleted,
       lastFreezeUsed: row.lastFreezeUsed,

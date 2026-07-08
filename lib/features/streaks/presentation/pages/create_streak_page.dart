@@ -19,6 +19,8 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
   final _descriptionController = TextEditingController();
   Frequency _frequency = Frequency.daily;
   final Set<int> _selectedDays = <int>{};
+  bool _remindersEnabled = false;
+  final List<TimeOfDay> _reminderTimes = <TimeOfDay>[];
   static const List<String> _weekdayLabels = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
@@ -40,6 +42,13 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
       return;
     }
 
+    if (_remindersEnabled && _reminderTimes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one reminder time.')),
+      );
+      return;
+    }
+
     final repository = ref.read(streakRepositoryProvider);
     final createdId = await repository.add(
       Streak(
@@ -49,6 +58,12 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
             : _descriptionController.text.trim(),
         frequency: _frequency,
         scheduledDays: _frequency == Frequency.custom ? _selectedDays.toList() : const [],
+        remindersEnabled: _remindersEnabled,
+        reminderTimes: _reminderTimes
+            .map((time) => (time.hour * 60) + time.minute)
+            .toSet()
+            .toList()
+          ..sort(),
         createdAt: DateTime.now(),
       ),
     );
@@ -65,6 +80,36 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
         _selectedDays.add(day);
       }
     });
+  }
+
+  Future<void> _pickReminderTime({int? editIndex}) async {
+    final initialTime = editIndex == null ? TimeOfDay.now() : _reminderTimes[editIndex];
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      if (editIndex == null) {
+        _reminderTimes.add(picked);
+      } else {
+        _reminderTimes[editIndex] = picked;
+      }
+
+      _reminderTimes.sort((a, b) {
+        final minutesA = (a.hour * 60) + a.minute;
+        final minutesB = (b.hour * 60) + b.minute;
+        return minutesA.compareTo(minutesB);
+      });
+    });
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(time);
   }
 
   @override
@@ -172,6 +217,67 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                   }),
                 ),
               ],
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Enable reminders'),
+                        subtitle: const Text('Receive local notifications for this streak.'),
+                        value: _remindersEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _remindersEnabled = value;
+                          });
+                        },
+                      ),
+                      if (_remindersEnabled) ...[
+                        const SizedBox(height: 8),
+                        if (_reminderTimes.isEmpty)
+                          const Text('No reminders added yet.')
+                        else
+                          ...List.generate(_reminderTimes.length, (index) {
+                            final time = _reminderTimes[index];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.notifications_active_outlined),
+                              title: Text(_formatTime(time)),
+                              trailing: Wrap(
+                                spacing: 4,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Edit reminder time',
+                                    onPressed: () => _pickReminderTime(editIndex: index),
+                                    icon: const Icon(Icons.edit_outlined),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Delete reminder time',
+                                    onPressed: () {
+                                      setState(() {
+                                        _reminderTimes.removeAt(index);
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _pickReminderTime,
+                          icon: const Icon(Icons.add_alarm),
+                          label: const Text('Add reminder time'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _submit,

@@ -59,6 +59,24 @@ class $StreaksTableTable extends StreaksTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _remindersEnabledMeta =
+      const VerificationMeta('remindersEnabled');
+  @override
+  late final GeneratedColumn<bool> remindersEnabled = GeneratedColumn<bool>(
+      'reminders_enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("reminders_enabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _reminderTimesMeta =
+      const VerificationMeta('reminderTimes');
+  @override
+  late final GeneratedColumn<String> reminderTimes = GeneratedColumn<String>(
+      'reminder_times', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -128,6 +146,8 @@ class $StreaksTableTable extends StreaksTable
         scheduledDays,
         reminderHour,
         reminderMinute,
+        remindersEnabled,
+        reminderTimes,
         createdAt,
         lastCompleted,
         lastFreezeUsed,
@@ -185,6 +205,18 @@ class $StreaksTableTable extends StreaksTable
           _reminderMinuteMeta,
           reminderMinute.isAcceptableOrUnknown(
               data['reminder_minute']!, _reminderMinuteMeta));
+    }
+    if (data.containsKey('reminders_enabled')) {
+      context.handle(
+          _remindersEnabledMeta,
+          remindersEnabled.isAcceptableOrUnknown(
+              data['reminders_enabled']!, _remindersEnabledMeta));
+    }
+    if (data.containsKey('reminder_times')) {
+      context.handle(
+          _reminderTimesMeta,
+          reminderTimes.isAcceptableOrUnknown(
+              data['reminder_times']!, _reminderTimesMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -255,6 +287,10 @@ class $StreaksTableTable extends StreaksTable
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_hour'])!,
       reminderMinute: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_minute'])!,
+      remindersEnabled: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}reminders_enabled'])!,
+      reminderTimes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}reminder_times'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastCompleted: attachedDatabase.typeMapping.read(
@@ -289,6 +325,8 @@ class StreaksTableData extends DataClass
   final String scheduledDays;
   final int reminderHour;
   final int reminderMinute;
+  final bool remindersEnabled;
+  final String reminderTimes;
   final DateTime createdAt;
   final DateTime? lastCompleted;
   final DateTime? lastFreezeUsed;
@@ -305,6 +343,8 @@ class StreaksTableData extends DataClass
       required this.scheduledDays,
       required this.reminderHour,
       required this.reminderMinute,
+      required this.remindersEnabled,
+      required this.reminderTimes,
       required this.createdAt,
       this.lastCompleted,
       this.lastFreezeUsed,
@@ -325,6 +365,8 @@ class StreaksTableData extends DataClass
     map['scheduled_days'] = Variable<String>(scheduledDays);
     map['reminder_hour'] = Variable<int>(reminderHour);
     map['reminder_minute'] = Variable<int>(reminderMinute);
+    map['reminders_enabled'] = Variable<bool>(remindersEnabled);
+    map['reminder_times'] = Variable<String>(reminderTimes);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || lastCompleted != null) {
       map['last_completed'] = Variable<DateTime>(lastCompleted);
@@ -351,6 +393,8 @@ class StreaksTableData extends DataClass
       scheduledDays: Value(scheduledDays),
       reminderHour: Value(reminderHour),
       reminderMinute: Value(reminderMinute),
+      remindersEnabled: Value(remindersEnabled),
+      reminderTimes: Value(reminderTimes),
       createdAt: Value(createdAt),
       lastCompleted: lastCompleted == null && nullToAbsent
           ? const Value.absent()
@@ -377,6 +421,8 @@ class StreaksTableData extends DataClass
       scheduledDays: serializer.fromJson<String>(json['scheduledDays']),
       reminderHour: serializer.fromJson<int>(json['reminderHour']),
       reminderMinute: serializer.fromJson<int>(json['reminderMinute']),
+      remindersEnabled: serializer.fromJson<bool>(json['remindersEnabled']),
+      reminderTimes: serializer.fromJson<String>(json['reminderTimes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastCompleted: serializer.fromJson<DateTime?>(json['lastCompleted']),
       lastFreezeUsed: serializer.fromJson<DateTime?>(json['lastFreezeUsed']),
@@ -399,6 +445,8 @@ class StreaksTableData extends DataClass
       'scheduledDays': serializer.toJson<String>(scheduledDays),
       'reminderHour': serializer.toJson<int>(reminderHour),
       'reminderMinute': serializer.toJson<int>(reminderMinute),
+      'remindersEnabled': serializer.toJson<bool>(remindersEnabled),
+      'reminderTimes': serializer.toJson<String>(reminderTimes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastCompleted': serializer.toJson<DateTime?>(lastCompleted),
       'lastFreezeUsed': serializer.toJson<DateTime?>(lastFreezeUsed),
@@ -418,6 +466,8 @@ class StreaksTableData extends DataClass
           String? scheduledDays,
           int? reminderHour,
           int? reminderMinute,
+          bool? remindersEnabled,
+          String? reminderTimes,
           DateTime? createdAt,
           Value<DateTime?> lastCompleted = const Value.absent(),
           Value<DateTime?> lastFreezeUsed = const Value.absent(),
@@ -434,6 +484,8 @@ class StreaksTableData extends DataClass
         scheduledDays: scheduledDays ?? this.scheduledDays,
         reminderHour: reminderHour ?? this.reminderHour,
         reminderMinute: reminderMinute ?? this.reminderMinute,
+        remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+        reminderTimes: reminderTimes ?? this.reminderTimes,
         createdAt: createdAt ?? this.createdAt,
         lastCompleted:
             lastCompleted.present ? lastCompleted.value : this.lastCompleted,
@@ -461,6 +513,12 @@ class StreaksTableData extends DataClass
       reminderMinute: data.reminderMinute.present
           ? data.reminderMinute.value
           : this.reminderMinute,
+      remindersEnabled: data.remindersEnabled.present
+          ? data.remindersEnabled.value
+          : this.remindersEnabled,
+      reminderTimes: data.reminderTimes.present
+          ? data.reminderTimes.value
+          : this.reminderTimes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastCompleted: data.lastCompleted.present
           ? data.lastCompleted.value
@@ -493,6 +551,8 @@ class StreaksTableData extends DataClass
           ..write('scheduledDays: $scheduledDays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('remindersEnabled: $remindersEnabled, ')
+          ..write('reminderTimes: $reminderTimes, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastCompleted: $lastCompleted, ')
           ..write('lastFreezeUsed: $lastFreezeUsed, ')
@@ -514,6 +574,8 @@ class StreaksTableData extends DataClass
       scheduledDays,
       reminderHour,
       reminderMinute,
+      remindersEnabled,
+      reminderTimes,
       createdAt,
       lastCompleted,
       lastFreezeUsed,
@@ -533,6 +595,8 @@ class StreaksTableData extends DataClass
           other.scheduledDays == this.scheduledDays &&
           other.reminderHour == this.reminderHour &&
           other.reminderMinute == this.reminderMinute &&
+          other.remindersEnabled == this.remindersEnabled &&
+          other.reminderTimes == this.reminderTimes &&
           other.createdAt == this.createdAt &&
           other.lastCompleted == this.lastCompleted &&
           other.lastFreezeUsed == this.lastFreezeUsed &&
@@ -551,6 +615,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
   final Value<String> scheduledDays;
   final Value<int> reminderHour;
   final Value<int> reminderMinute;
+  final Value<bool> remindersEnabled;
+  final Value<String> reminderTimes;
   final Value<DateTime> createdAt;
   final Value<DateTime?> lastCompleted;
   final Value<DateTime?> lastFreezeUsed;
@@ -567,6 +633,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     this.scheduledDays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.remindersEnabled = const Value.absent(),
+    this.reminderTimes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastCompleted = const Value.absent(),
     this.lastFreezeUsed = const Value.absent(),
@@ -584,6 +652,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     this.scheduledDays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.remindersEnabled = const Value.absent(),
+    this.reminderTimes = const Value.absent(),
     required DateTime createdAt,
     this.lastCompleted = const Value.absent(),
     this.lastFreezeUsed = const Value.absent(),
@@ -603,6 +673,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     Expression<String>? scheduledDays,
     Expression<int>? reminderHour,
     Expression<int>? reminderMinute,
+    Expression<bool>? remindersEnabled,
+    Expression<String>? reminderTimes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastCompleted,
     Expression<DateTime>? lastFreezeUsed,
@@ -620,6 +692,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       if (scheduledDays != null) 'scheduled_days': scheduledDays,
       if (reminderHour != null) 'reminder_hour': reminderHour,
       if (reminderMinute != null) 'reminder_minute': reminderMinute,
+      if (remindersEnabled != null) 'reminders_enabled': remindersEnabled,
+      if (reminderTimes != null) 'reminder_times': reminderTimes,
       if (createdAt != null) 'created_at': createdAt,
       if (lastCompleted != null) 'last_completed': lastCompleted,
       if (lastFreezeUsed != null) 'last_freeze_used': lastFreezeUsed,
@@ -640,6 +714,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       Value<String>? scheduledDays,
       Value<int>? reminderHour,
       Value<int>? reminderMinute,
+      Value<bool>? remindersEnabled,
+      Value<String>? reminderTimes,
       Value<DateTime>? createdAt,
       Value<DateTime?>? lastCompleted,
       Value<DateTime?>? lastFreezeUsed,
@@ -656,6 +732,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       scheduledDays: scheduledDays ?? this.scheduledDays,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+      reminderTimes: reminderTimes ?? this.reminderTimes,
       createdAt: createdAt ?? this.createdAt,
       lastCompleted: lastCompleted ?? this.lastCompleted,
       lastFreezeUsed: lastFreezeUsed ?? this.lastFreezeUsed,
@@ -690,6 +768,12 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     }
     if (reminderMinute.present) {
       map['reminder_minute'] = Variable<int>(reminderMinute.value);
+    }
+    if (remindersEnabled.present) {
+      map['reminders_enabled'] = Variable<bool>(remindersEnabled.value);
+    }
+    if (reminderTimes.present) {
+      map['reminder_times'] = Variable<String>(reminderTimes.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -728,6 +812,8 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
           ..write('scheduledDays: $scheduledDays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('remindersEnabled: $remindersEnabled, ')
+          ..write('reminderTimes: $reminderTimes, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastCompleted: $lastCompleted, ')
           ..write('lastFreezeUsed: $lastFreezeUsed, ')
@@ -1326,6 +1412,8 @@ typedef $$StreaksTableTableCreateCompanionBuilder = StreaksTableCompanion
   Value<String> scheduledDays,
   Value<int> reminderHour,
   Value<int> reminderMinute,
+  Value<bool> remindersEnabled,
+  Value<String> reminderTimes,
   required DateTime createdAt,
   Value<DateTime?> lastCompleted,
   Value<DateTime?> lastFreezeUsed,
@@ -1344,6 +1432,8 @@ typedef $$StreaksTableTableUpdateCompanionBuilder = StreaksTableCompanion
   Value<String> scheduledDays,
   Value<int> reminderHour,
   Value<int> reminderMinute,
+  Value<bool> remindersEnabled,
+  Value<String> reminderTimes,
   Value<DateTime> createdAt,
   Value<DateTime?> lastCompleted,
   Value<DateTime?> lastFreezeUsed,
@@ -1384,6 +1474,13 @@ class $$StreaksTableTableFilterComposer
   ColumnFilters<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get remindersEnabled => $composableBuilder(
+      column: $table.remindersEnabled,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reminderTimes => $composableBuilder(
+      column: $table.reminderTimes, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -1443,6 +1540,14 @@ class $$StreaksTableTableOrderingComposer
 
   ColumnOrderings<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get remindersEnabled => $composableBuilder(
+      column: $table.remindersEnabled,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reminderTimes => $composableBuilder(
+      column: $table.reminderTimes,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
@@ -1505,6 +1610,12 @@ class $$StreaksTableTableAnnotationComposer
   GeneratedColumn<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute, builder: (column) => column);
 
+  GeneratedColumn<bool> get remindersEnabled => $composableBuilder(
+      column: $table.remindersEnabled, builder: (column) => column);
+
+  GeneratedColumn<String> get reminderTimes => $composableBuilder(
+      column: $table.reminderTimes, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1563,6 +1674,8 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             Value<String> scheduledDays = const Value.absent(),
             Value<int> reminderHour = const Value.absent(),
             Value<int> reminderMinute = const Value.absent(),
+            Value<bool> remindersEnabled = const Value.absent(),
+            Value<String> reminderTimes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastCompleted = const Value.absent(),
             Value<DateTime?> lastFreezeUsed = const Value.absent(),
@@ -1580,6 +1693,8 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             scheduledDays: scheduledDays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            remindersEnabled: remindersEnabled,
+            reminderTimes: reminderTimes,
             createdAt: createdAt,
             lastCompleted: lastCompleted,
             lastFreezeUsed: lastFreezeUsed,
@@ -1597,6 +1712,8 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             Value<String> scheduledDays = const Value.absent(),
             Value<int> reminderHour = const Value.absent(),
             Value<int> reminderMinute = const Value.absent(),
+            Value<bool> remindersEnabled = const Value.absent(),
+            Value<String> reminderTimes = const Value.absent(),
             required DateTime createdAt,
             Value<DateTime?> lastCompleted = const Value.absent(),
             Value<DateTime?> lastFreezeUsed = const Value.absent(),
@@ -1614,6 +1731,8 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             scheduledDays: scheduledDays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            remindersEnabled: remindersEnabled,
+            reminderTimes: reminderTimes,
             createdAt: createdAt,
             lastCompleted: lastCompleted,
             lastFreezeUsed: lastFreezeUsed,

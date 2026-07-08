@@ -17,10 +17,14 @@ void main() {
 
   testWidgets('shows create streak form from dashboard', (tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
+      ProviderScope(
+        overrides: [
+          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+        ],
         child: StreakApp(),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('Dashboard'), findsOneWidget);
 
@@ -34,14 +38,17 @@ void main() {
 
   testWidgets('shows dashboard streak overview', (tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
+      ProviderScope(
+        overrides: [
+          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+        ],
         child: StreakApp(),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Your streaks'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
   });
 
   testWidgets('dashboard summary cards fit without overflow', (tester) async {
@@ -84,10 +91,14 @@ void main() {
 
   testWidgets('shows validation errors for invalid streak title', (tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
+      ProviderScope(
+        overrides: [
+          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+        ],
         child: StreakApp(),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Create Streak'));
     await tester.pumpAndSettle();

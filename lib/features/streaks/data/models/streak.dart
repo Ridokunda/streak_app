@@ -11,9 +11,9 @@ class Streak {
 
   List<int> scheduledDays = [];
 
-  int reminderHour = 20;
+  bool remindersEnabled = false;
 
-  int reminderMinute = 0;
+  List<int> reminderTimes = [];
 
   late DateTime createdAt;
 
@@ -38,8 +38,8 @@ class Streak {
     required this.createdAt,
     this.description,
     this.scheduledDays = const [],
-    this.reminderHour = 20,
-    this.reminderMinute = 0,
+    this.remindersEnabled = false,
+    this.reminderTimes = const [],
     this.lastCompleted,
     this.currentStreak = 0,
     this.longestStreak = 0,
