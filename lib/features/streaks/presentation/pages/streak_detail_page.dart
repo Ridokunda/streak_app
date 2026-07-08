@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/models/completion.dart';
 import '../../data/models/streak.dart';
@@ -36,11 +37,27 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     setState(_loadData);
   }
 
+  Future<void> _deleteStreak() async {
+    final repository = ref.read(streakRepositoryProvider);
+    await repository.delete(widget.streakId);
+
+    if (mounted) {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Streak details'),
+        actions: [
+          IconButton(
+            onPressed: _deleteStreak,
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Delete streak',
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _markCompleted,

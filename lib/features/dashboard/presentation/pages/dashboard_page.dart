@@ -56,7 +56,7 @@ class DashboardPage extends ConsumerWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.6,
+                childAspectRatio: 1.2,
                 children: [
                   _SummaryCard(
                     title: 'Active streaks',
@@ -150,15 +150,26 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 24),
-            const Spacer(),
-            Text(title, style: Theme.of(context).textTheme.labelMedium),
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value, style: Theme.of(context).textTheme.titleLarge),
+            ),
           ],
         ),
       ),

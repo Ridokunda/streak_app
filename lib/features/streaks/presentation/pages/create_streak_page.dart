@@ -18,6 +18,8 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   Frequency _frequency = Frequency.daily;
+  final Set<int> _selectedDays = <int>{};
+  static const List<String> _weekdayLabels = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void dispose() {
@@ -31,6 +33,13 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
       return;
     }
 
+    if (_frequency == Frequency.custom && _selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one day for custom frequency.')),
+      );
+      return;
+    }
+
     final repository = ref.read(streakRepositoryProvider);
     final createdId = await repository.add(
       Streak(
@@ -39,12 +48,23 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
             ? null
             : _descriptionController.text.trim(),
         frequency: _frequency,
+        scheduledDays: _frequency == Frequency.custom ? _selectedDays.toList() : const [],
         createdAt: DateTime.now(),
       ),
     );
 
     if (!mounted) return;
     context.go('/streaks/$createdId');
+  }
+
+  void _toggleDay(int day) {
+    setState(() {
+      if (_selectedDays.contains(day)) {
+        _selectedDays.remove(day);
+      } else {
+        _selectedDays.add(day);
+      }
+    });
   }
 
   @override
@@ -123,10 +143,35 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                 ],
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() => _frequency = value);
+                    setState(() {
+                      _frequency = value;
+                      if (_frequency != Frequency.custom) {
+                        _selectedDays.clear();
+                      }
+                    });
                   }
                 },
               ),
+              if (_frequency == Frequency.custom) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Select days of the week',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(7, (index) {
+                    final day = index + 1;
+                    return FilterChip(
+                      label: Text(_weekdayLabels[index]),
+                      selected: _selectedDays.contains(day),
+                      onSelected: (_) => _toggleDay(day),
+                    );
+                  }),
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _submit,
