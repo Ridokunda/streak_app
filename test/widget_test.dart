@@ -9,12 +9,25 @@ import 'package:streak_app/features/achievements/presentation/pages/achievements
 import 'package:streak_app/features/achievements/presentation/providers/achievement_provider.dart';
 import 'package:streak_app/core/enums/frequency.dart';
 import 'package:streak_app/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:streak_app/features/settings/data/models/app_settings.dart';
+import 'package:streak_app/features/settings/presentation/pages/settings_page.dart';
+import 'package:streak_app/features/settings/presentation/providers/settings_provider.dart';
 import 'package:streak_app/features/streaks/data/models/streak.dart';
 import 'package:streak_app/features/streaks/presentation/pages/create_streak_page.dart';
 import 'package:streak_app/features/streaks/presentation/providers/streak_provider.dart';
 import 'package:streak_app/main.dart';
 
 void main() {
+  final defaultSettingsOverride = appSettingsProvider.overrideWith(
+    (ref) => Stream<AppSettings>.value(
+      AppSettings(
+        darkMode: true,
+        notificationsEnabled: true,
+        hapticsEnabled: true,
+      ),
+    ),
+  );
+
   setUp(() {
     appRouter.go('/');
   });
@@ -23,6 +36,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          defaultSettingsOverride,
           streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
@@ -44,6 +58,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          defaultSettingsOverride,
           streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
@@ -97,6 +112,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          defaultSettingsOverride,
           streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
@@ -117,6 +133,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          defaultSettingsOverride,
           streakListProvider.overrideWith(
             (ref) => Stream<List<Streak>>.value([
               Streak(
@@ -208,5 +225,30 @@ void main() {
     expect(find.text('7d'), findsOneWidget);
     expect(find.text('3F'), findsOneWidget);
     expect(find.text('Save'), findsOneWidget);
+  });
+
+  testWidgets('shows settings toggles from persisted settings state', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appSettingsProvider.overrideWith(
+            (ref) => Stream<AppSettings>.value(
+              AppSettings(
+                darkMode: false,
+                notificationsEnabled: true,
+                hapticsEnabled: false,
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: SettingsPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Dark mode'), findsOneWidget);
+    expect(find.text('Notifications enabled'), findsOneWidget);
+    expect(find.text('Haptics enabled'), findsOneWidget);
   });
 }

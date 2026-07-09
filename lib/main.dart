@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/database/drift_database.dart';
+import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/notifications/data/services/reminder_notification_service.dart';
 import 'app/theme/app_theme.dart';
 import 'app/router/app_router.dart';
@@ -19,17 +20,19 @@ Future<void> main() async {
   );
 }
 
-class StreakApp extends StatelessWidget {
+class StreakApp extends ConsumerWidget {
   const StreakApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
 
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark,
+      themeMode: themeMode,
 
       routerConfig: appRouter,
     );
