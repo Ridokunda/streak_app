@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../achievements/domain/achievement_catalog.dart';
 import '../../../../core/enums/frequency.dart';
 import '../../data/models/completion.dart';
 import '../../data/models/streak.dart';
@@ -160,6 +161,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
               }
 
               final frequencyLabel = streak.frequency.name.toUpperCase();
+              final badges = buildBadgesForStreak(streak);
 
               return FutureBuilder<List<Completion>>(
                 future: _completionFuture,
@@ -182,6 +184,21 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                         streak.description ?? 'No description provided.',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
+                      if (badges.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: badges
+                              .map(
+                                (badge) => Chip(
+                                  avatar: Icon(badge.icon, size: 16),
+                                  label: Text(badge.title),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       Card(
                         child: Padding(

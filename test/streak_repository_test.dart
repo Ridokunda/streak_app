@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:streak_app/app/database/drift_database.dart';
+import 'package:streak_app/features/achievements/data/repositories/achievement_repository.dart';
+import 'package:streak_app/features/achievements/domain/achievement_catalog.dart';
 import 'package:streak_app/core/enums/frequency.dart';
 import 'package:streak_app/features/streaks/data/models/streak.dart';
 import 'package:streak_app/features/streaks/data/repositories/streak_repository.dart';
@@ -9,10 +11,12 @@ import 'package:streak_app/features/streaks/data/repositories/streak_repository.
 void main() {
   late AppDatabase db;
   late StreakRepository repository;
+  late AchievementRepository achievementRepository;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repository = StreakRepository(db: db, syncNotifications: false);
+    achievementRepository = AchievementRepository(db: db);
   });
 
   tearDown(() async {
@@ -77,5 +81,28 @@ void main() {
     expect(streak.longestStreak, 1);
     expect(streak.freezeCount, 0);
     expect(completions.first.usedFreeze, isFalse);
+  });
+
+  test('persists unlocked timestamp after achievement source metric changes', () async {
+    final streakId = await createDailyStreak();
+
+    final beforeDelete = await achievementRepository.getUnlockedAtMap();
+    expect(beforeDelete[AchievementKeys.firstFlame], isNotNull);
+
+    await repository.delete(streakId);
+
+    final afterDelete = await achievementRepository.getUnlockedAtMap();
+    expect(afterDelete[AchievementKeys.firstFlame], beforeDelete[AchievementKeys.firstFlame]);
+  });
+
+  test('stores unlocked timestamp when seven day sprint is reached', () async {
+    final streakId = await createDailyStreak();
+
+    for (var day = 1; day <= 7; day++) {
+      await repository.markCompleted(streakId, completedDate: DateTime(2026, 4, day));
+    }
+
+    final unlockedAtMap = await achievementRepository.getUnlockedAtMap();
+    expect(unlockedAtMap[AchievementKeys.sevenDaySprint], isNotNull);
   });
 }

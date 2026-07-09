@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/enums/frequency.dart';
+import '../../../achievements/domain/achievement_catalog.dart';
 import '../../../streaks/data/models/streak.dart';
 import '../../../streaks/presentation/providers/streak_provider.dart';
 
@@ -184,6 +185,8 @@ class _StreakTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final badges = buildBadgesForStreak(streak);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -215,6 +218,22 @@ class _StreakTile extends StatelessWidget {
                       '${streak.currentStreak} day streak • ${streak.frequency.name.capitalize()}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    if (badges.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: badges
+                            .map(
+                              (badge) => Chip(
+                                avatar: Icon(badge.icon, size: 16),
+                                label: Text(badge.shortLabel),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
                     if (streak.description != null && streak.description!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(

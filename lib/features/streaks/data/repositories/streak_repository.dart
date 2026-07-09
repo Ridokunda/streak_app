@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../app/database/drift_database.dart';
 import '../../../../core/enums/frequency.dart';
+import '../../../achievements/data/repositories/achievement_repository.dart';
 import '../../../notifications/data/services/reminder_notification_service.dart';
 import '../models/completion.dart';
 import '../models/streak.dart';
@@ -22,6 +23,7 @@ class StreakRepository {
   Future<int> add(Streak streak) async {
     final db = await _dbInstance;
     final id = await db.into(db.streaksTable).insert(_streakToCompanion(streak));
+    await _syncAchievements();
 
     if (_syncNotifications) {
       streak.id = id;
@@ -152,6 +154,8 @@ class StreakRepository {
         ),
       );
     });
+
+    await _syncAchievements();
   }
 
   Future<void> delete(int id) async {
@@ -169,6 +173,8 @@ class StreakRepository {
             ..where((t) => t.id.equals(id)))
           .go();
     });
+
+    await _syncAchievements();
   }
 
   Future<void> update(Streak streak) async {
@@ -178,10 +184,17 @@ class StreakRepository {
     }
 
     await db.update(db.streaksTable).replace(_streakToData(streak));
+    await _syncAchievements();
 
     if (_syncNotifications) {
       await ReminderNotificationService.instance.syncStreakReminders(streak);
     }
+  }
+
+  Future<void> _syncAchievements() async {
+    final db = await _dbInstance;
+    final streaks = await getAll();
+    await AchievementRepository(db: db).syncFromStreaks(streaks);
   }
 
   StreaksTableCompanion _streakToCompanion(Streak streak) {

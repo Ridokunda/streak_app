@@ -41,7 +41,15 @@ class AppSettingsTable extends Table {
   BoolColumn get hapticsEnabled => boolean().withDefault(const Constant(true))();
 }
 
-@DriftDatabase(tables: [StreaksTable, CompletionsTable, AppSettingsTable])
+class AchievementsTable extends Table {
+  TextColumn get key => text()();
+  DateTimeColumn get unlockedAt => dateTime()();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [StreaksTable, CompletionsTable, AppSettingsTable, AchievementsTable])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._(super.executor);
 
@@ -55,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +71,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await migrator.addColumn(streaksTable, streaksTable.remindersEnabled);
             await migrator.addColumn(streaksTable, streaksTable.reminderTimes);
+          }
+          if (from < 3) {
+            await migrator.createTable(achievementsTable);
           }
         },
       );
