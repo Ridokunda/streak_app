@@ -12,6 +12,16 @@ class AchievementRecord {
   final DateTime unlockedAt;
 }
 
+class CompletionStats {
+  const CompletionStats({
+    required this.totalCompletions,
+    required this.freezeSaveCount,
+  });
+
+  final int totalCompletions;
+  final int freezeSaveCount;
+}
+
 class AchievementRepository {
   AchievementRepository({AppDatabase? db}) : _db = db;
 
@@ -36,10 +46,26 @@ class AchievementRepository {
     };
   }
 
+  Future<CompletionStats> getCompletionStats() async {
+    final db = await _dbInstance;
+    final completionRows = await db.select(db.completionsTable).get();
+
+    return CompletionStats(
+      totalCompletions: completionRows.length,
+      freezeSaveCount: completionRows.where((row) => row.usedFreeze).length,
+    );
+  }
+
   Future<void> syncFromStreaks(List<Streak> streaks) async {
     final db = await _dbInstance;
     final unlockedAtByKey = await getUnlockedAtMap();
-    final progressList = evaluateAchievements(streaks, unlockedAtByKey: unlockedAtByKey);
+    final completionStats = await getCompletionStats();
+    final metrics = buildAchievementMetrics(
+      streaks,
+      totalCompletions: completionStats.totalCompletions,
+      freezeSaveCount: completionStats.freezeSaveCount,
+    );
+    final progressList = evaluateAchievements(metrics, unlockedAtByKey: unlockedAtByKey);
     final now = DateTime.now();
 
     await db.transaction(() async {

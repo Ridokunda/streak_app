@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:streak_app/app/router/app_router.dart';
+import 'package:streak_app/features/achievements/data/repositories/achievement_repository.dart';
 import 'package:streak_app/features/achievements/domain/achievement_catalog.dart';
 import 'package:streak_app/features/achievements/presentation/pages/achievements_page.dart';
 import 'package:streak_app/features/achievements/presentation/providers/achievement_provider.dart';
@@ -144,6 +145,12 @@ void main() {
               AchievementKeys.closeCall: DateTime(2026, 1, 8),
             }),
           ),
+          completionStatsProvider.overrideWith(
+            (ref) => const CompletionStats(
+              totalCompletions: 40,
+              freezeSaveCount: 1,
+            ),
+          ),
         ],
         child: const MaterialApp(home: AchievementsPage()),
       ),
@@ -153,11 +160,19 @@ void main() {
     expect(find.text('Achievements'), findsOneWidget);
     expect(find.text('Unlocked achievements'), findsOneWidget);
     expect(find.text('First Flame'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Seven Day Sprint'), 250);
     expect(find.text('Seven Day Sprint'), findsOneWidget);
     expect(find.text('Earned 01 Jan 2026'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Monthly Legend'), 300);
     expect(find.text('Monthly Legend'), findsOneWidget);
     expect(find.text('10/30'), findsOneWidget);
+
+    await tester.tap(find.text('Monthly Legend'));
+    await tester.pumpAndSettle();
+    expect(find.text('Unlock criteria'), findsOneWidget);
+    expect(find.textContaining('Progress:'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('shows unlocked badge chips on dashboard streak tile', (tester) async {

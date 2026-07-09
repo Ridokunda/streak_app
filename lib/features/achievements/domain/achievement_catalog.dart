@@ -9,6 +9,11 @@ class AchievementKeys {
   static const monthlyLegend = 'monthly_legend';
   static const iceLocker = 'ice_locker';
   static const closeCall = 'close_call';
+  static const completionStarter = 'completion_starter';
+  static const completionMaster = 'completion_master';
+  static const reminderStarter = 'reminder_starter';
+  static const reminderPlanner = 'reminder_planner';
+  static const freezeHero = 'freeze_hero';
 }
 
 class AchievementDefinition {
@@ -18,6 +23,7 @@ class AchievementDefinition {
     required this.description,
     required this.icon,
     required this.target,
+    required this.criteria,
     required this.currentValue,
     this.streakBadgeRule,
     this.shortLabel,
@@ -28,6 +34,7 @@ class AchievementDefinition {
   final String description;
   final IconData icon;
   final int target;
+  final String criteria;
   final int Function(AchievementMetrics metrics) currentValue;
   final bool Function(Streak streak)? streakBadgeRule;
   final String? shortLabel;
@@ -78,6 +85,10 @@ class AchievementMetrics {
     required this.bestStreak,
     required this.totalFreezes,
     required this.usedFreezeCount,
+    required this.totalCompletions,
+    required this.freezeSaveCount,
+    required this.reminderEnabledCount,
+    required this.reminderSlotCount,
   });
 
   final List<Streak> streaks;
@@ -86,6 +97,10 @@ class AchievementMetrics {
   final int bestStreak;
   final int totalFreezes;
   final int usedFreezeCount;
+  final int totalCompletions;
+  final int freezeSaveCount;
+  final int reminderEnabledCount;
+  final int reminderSlotCount;
 }
 
 final List<AchievementDefinition> achievementCatalog = [
@@ -95,6 +110,7 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Create your first streak.',
     icon: Icons.whatshot,
     target: 1,
+    criteria: 'Create at least 1 streak.',
     currentValue: (metrics) => metrics.createdCount,
   ),
   AchievementDefinition(
@@ -103,6 +119,7 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Keep 3 active streaks going at once.',
     icon: Icons.layers_outlined,
     target: 3,
+    criteria: 'Have at least 3 active (not archived) streaks.',
     currentValue: (metrics) => metrics.activeCount,
   ),
   AchievementDefinition(
@@ -111,6 +128,7 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Reach a 7 day streak.',
     icon: Icons.bolt,
     target: 7,
+    criteria: 'Reach a longest streak of at least 7 days.',
     currentValue: (metrics) => metrics.bestStreak,
     streakBadgeRule: _hasSevenDaySprint,
     shortLabel: '7d',
@@ -121,6 +139,7 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Reach a 30 day streak.',
     icon: Icons.calendar_month,
     target: 30,
+    criteria: 'Reach a longest streak of at least 30 days.',
     currentValue: (metrics) => metrics.bestStreak,
     streakBadgeRule: _hasMonthlyLegend,
     shortLabel: '30d',
@@ -131,6 +150,7 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Store 3 freezes at once.',
     icon: Icons.ac_unit,
     target: 3,
+    criteria: 'Have at least 3 freezes available at the same time.',
     currentValue: (metrics) => metrics.totalFreezes,
     streakBadgeRule: _hasIceLocker,
     shortLabel: '3F',
@@ -141,18 +161,62 @@ final List<AchievementDefinition> achievementCatalog = [
     description: 'Save a streak by using a freeze.',
     icon: Icons.shield_outlined,
     target: 1,
+    criteria: 'Use a freeze at least once to save a streak.',
     currentValue: (metrics) => metrics.usedFreezeCount,
     streakBadgeRule: _hasCloseCall,
     shortLabel: 'Save',
   ),
+  AchievementDefinition(
+    key: AchievementKeys.completionStarter,
+    title: 'Check-in Starter',
+    description: 'Complete 25 total check-ins.',
+    icon: Icons.task_alt,
+    target: 25,
+    criteria: 'Record at least 25 total streak completions.',
+    currentValue: (metrics) => metrics.totalCompletions,
+  ),
+  AchievementDefinition(
+    key: AchievementKeys.completionMaster,
+    title: 'Century Check-ins',
+    description: 'Complete 100 total check-ins.',
+    icon: Icons.workspace_premium,
+    target: 100,
+    criteria: 'Record at least 100 total streak completions.',
+    currentValue: (metrics) => metrics.totalCompletions,
+  ),
+  AchievementDefinition(
+    key: AchievementKeys.reminderStarter,
+    title: 'Reminder On',
+    description: 'Enable reminders for a streak.',
+    icon: Icons.notifications_active_outlined,
+    target: 1,
+    criteria: 'Have reminders enabled on at least 1 streak.',
+    currentValue: (metrics) => metrics.reminderEnabledCount,
+  ),
+  AchievementDefinition(
+    key: AchievementKeys.reminderPlanner,
+    title: 'Time Architect',
+    description: 'Configure 5 reminder times across streaks.',
+    icon: Icons.schedule,
+    target: 5,
+    criteria: 'Set at least 5 reminder slots across all streaks.',
+    currentValue: (metrics) => metrics.reminderSlotCount,
+  ),
+  AchievementDefinition(
+    key: AchievementKeys.freezeHero,
+    title: 'Freeze Hero',
+    description: 'Save streaks with freeze 3 times.',
+    icon: Icons.health_and_safety_outlined,
+    target: 3,
+    criteria: 'Use freeze saves in at least 3 completions.',
+    currentValue: (metrics) => metrics.freezeSaveCount,
+  ),
 ];
 
 List<AchievementProgress> evaluateAchievements(
-  List<Streak> streaks, {
+  AchievementMetrics metrics, {
   Map<String, DateTime> unlockedAtByKey = const {},
 }) {
-  final metrics = buildAchievementMetrics(streaks);
-
   return achievementCatalog
       .map(
         (definition) => AchievementProgress(
@@ -164,7 +228,11 @@ List<AchievementProgress> evaluateAchievements(
       .toList();
 }
 
-AchievementMetrics buildAchievementMetrics(List<Streak> streaks) {
+AchievementMetrics buildAchievementMetrics(
+  List<Streak> streaks, {
+  int totalCompletions = 0,
+  int freezeSaveCount = 0,
+}) {
   final activeStreaks = streaks.where((streak) => !streak.archived).toList();
   final bestStreak = streaks.fold<int>(
     0,
@@ -172,6 +240,8 @@ AchievementMetrics buildAchievementMetrics(List<Streak> streaks) {
   );
   final totalFreezes = streaks.fold<int>(0, (sum, streak) => sum + streak.freezeCount);
   final usedFreezeCount = streaks.where((streak) => streak.lastFreezeUsed != null).length;
+  final reminderEnabledCount = streaks.where((streak) => streak.remindersEnabled).length;
+  final reminderSlotCount = streaks.fold<int>(0, (sum, streak) => sum + streak.reminderTimes.length);
 
   return AchievementMetrics(
     streaks: streaks,
@@ -180,6 +250,10 @@ AchievementMetrics buildAchievementMetrics(List<Streak> streaks) {
     bestStreak: bestStreak,
     totalFreezes: totalFreezes,
     usedFreezeCount: usedFreezeCount,
+    totalCompletions: totalCompletions,
+    freezeSaveCount: freezeSaveCount,
+    reminderEnabledCount: reminderEnabledCount,
+    reminderSlotCount: reminderSlotCount,
   );
 }
 
