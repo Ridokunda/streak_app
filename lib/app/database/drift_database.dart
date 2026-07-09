@@ -49,7 +49,22 @@ class AchievementsTable extends Table {
   Set<Column<Object>>? get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [StreaksTable, CompletionsTable, AppSettingsTable, AchievementsTable])
+class TodosTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get reminderAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+@DriftDatabase(tables: [
+  StreaksTable,
+  CompletionsTable,
+  AppSettingsTable,
+  AchievementsTable,
+  TodosTable,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._(super.executor);
 
@@ -63,7 +78,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +89,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await migrator.createTable(achievementsTable);
+          }
+          if (from < 4) {
+            await migrator.createTable(todosTable);
           }
         },
       );

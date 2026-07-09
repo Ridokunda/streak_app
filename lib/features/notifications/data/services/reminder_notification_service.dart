@@ -96,8 +96,58 @@ class ReminderNotificationService {
     }
   }
 
+  Future<void> syncTodoReminder({
+    required int todoId,
+    required String title,
+    required bool reminderEnabled,
+    required bool isCompleted,
+    DateTime? reminderAt,
+  }) async {
+    await initialize();
+    await cancelTodoReminder(todoId);
+
+    if (!reminderEnabled || isCompleted || reminderAt == null) {
+      return;
+    }
+
+    final scheduledDate = tz.TZDateTime.from(reminderAt, tz.local);
+    final now = tz.TZDateTime.now(tz.local);
+    if (!scheduledDate.isAfter(now)) {
+      return;
+    }
+
+    await _plugin.zonedSchedule(
+      id: _todoNotificationId(todoId),
+      title: 'To-do reminder',
+      body: title,
+      scheduledDate: scheduledDate,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'todo_reminders',
+          'To-do reminders',
+          channelDescription: 'Reminder notifications for to-do list entries',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+        macOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: 'todo:$todoId',
+    );
+  }
+
+  Future<void> cancelTodoReminder(int todoId) async {
+    await initialize();
+    await _plugin.cancel(id: _todoNotificationId(todoId));
+  }
+
   int _notificationId(int streakId, int reminderIndex) {
     return (streakId * 100) + reminderIndex;
+  }
+
+  int _todoNotificationId(int todoId) {
+    return 100000000 + todoId;
   }
 
   tz.TZDateTime _nextOccurrence(int totalMinutes) {

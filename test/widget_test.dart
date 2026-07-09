@@ -15,6 +15,9 @@ import 'package:streak_app/features/settings/presentation/providers/settings_pro
 import 'package:streak_app/features/streaks/data/models/streak.dart';
 import 'package:streak_app/features/streaks/presentation/pages/create_streak_page.dart';
 import 'package:streak_app/features/streaks/presentation/providers/streak_provider.dart';
+import 'package:streak_app/features/todos/data/models/todo_item.dart';
+import 'package:streak_app/features/todos/presentation/pages/todo_page.dart';
+import 'package:streak_app/features/todos/presentation/providers/todo_provider.dart';
 import 'package:streak_app/main.dart';
 
 void main() {
@@ -250,5 +253,21 @@ void main() {
     expect(find.text('Dark mode'), findsOneWidget);
     expect(find.text('Notifications enabled'), findsOneWidget);
     expect(find.text('Haptics enabled'), findsOneWidget);
+  });
+
+  testWidgets('shows todo empty state when there are no tasks', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          todoListProvider.overrideWith((ref) => Stream<List<TodoItem>>.value(const [])),
+        ],
+        child: const MaterialApp(home: TodoPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('To-do list'), findsOneWidget);
+    expect(find.text('No to-do items yet'), findsOneWidget);
+    expect(find.text('Add task'), findsOneWidget);
   });
 }

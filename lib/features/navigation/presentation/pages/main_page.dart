@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../achievements/presentation/pages/achievements_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
-import '../../../history/presentation/pages/history_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../todos/presentation/pages/todo_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -17,7 +17,7 @@ class _MainPageState extends State<MainPage> {
 
   final pages = const [
     DashboardPage(),
-    HistoryPage(),
+    TodoPage(),
     AchievementsPage(),
     SettingsPage(),
   ];
@@ -36,8 +36,9 @@ class _MainPageState extends State<MainPage> {
             label: "Home",
           ),
           NavigationDestination(
-            icon: Icon(Icons.history),
-            label: "History",
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist),
+            label: "To-do",
           ),
           NavigationDestination(
             icon: Icon(Icons.emoji_events_outlined),
