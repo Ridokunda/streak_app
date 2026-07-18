@@ -48,6 +48,19 @@ void main() {
     expect(streak.completedSinceFreeze <= 4, isTrue);
   });
 
+  test('does not earn freeze from non-consecutive completion days', () async {
+    final streakId = await createDailyStreak();
+
+    for (var day in [1, 3, 5, 7, 9]) {
+      await repository.markCompleted(streakId, completedDate: DateTime(2026, 1, day));
+    }
+
+    final streak = await repository.getById(streakId);
+    expect(streak, isNotNull);
+    expect(streak!.freezeCount, 0);
+    expect(streak.completedSinceFreeze, 1);
+  });
+
   test('uses freeze when a day is missed and streak continues', () async {
     final streakId = await createDailyStreak();
 

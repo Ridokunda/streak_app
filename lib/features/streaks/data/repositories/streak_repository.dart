@@ -93,6 +93,7 @@ class StreakRepository {
       var newFreezeCount = streakRow.freezeCount;
       var newCurrentStreak = streakRow.currentStreak;
       var lastFreezeUsed = streakRow.lastFreezeUsed;
+      var completedSinceFreeze = 1;
 
       if (streakRow.lastCompleted != null) {
         final previousDay = DateTime(
@@ -108,6 +109,7 @@ class StreakRepository {
 
         if (gapDays == 1) {
           newCurrentStreak = streakRow.currentStreak + 1;
+          completedSinceFreeze = streakRow.completedSinceFreeze + 1;
         } else {
           final missedDays = gapDays - 1;
           if (newFreezeCount >= missedDays) {
@@ -118,9 +120,13 @@ class StreakRepository {
           } else {
             newCurrentStreak = 1;
           }
+
+          // A missed day breaks consecutive completions, even if a freeze saves the streak.
+          completedSinceFreeze = 1;
         }
       } else {
         newCurrentStreak = 1;
+        completedSinceFreeze = 1;
       }
 
       await db.into(db.completionsTable).insert(
@@ -131,7 +137,6 @@ class StreakRepository {
         ),
       );
 
-      var completedSinceFreeze = streakRow.completedSinceFreeze + 1;
       while (completedSinceFreeze >= 5 && newFreezeCount < 3) {
         completedSinceFreeze -= 5;
         newFreezeCount += 1;

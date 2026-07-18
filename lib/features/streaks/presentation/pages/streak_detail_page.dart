@@ -207,7 +207,12 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _InfoRow(label: 'Frequency', value: frequencyLabel),
-                              _InfoRow(label: 'Current streak', value: '${streak.currentStreak} days'),
+                              _InfoRow(
+                                label: 'Current streak',
+                                value: '${streak.currentStreak} days',
+                                valueIcon: Icons.local_fire_department,
+                                valueIconColor: Colors.orange,
+                              ),
                               _InfoRow(label: 'Best streak', value: '${streak.longestStreak} days'),
                               _InfoRow(label: 'Freezes', value: '${streak.freezeCount}'),
                               _InfoRow(
@@ -307,10 +312,17 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.valueIcon,
+    this.valueIconColor,
+  });
 
   final String label;
   final String value;
+  final IconData? valueIcon;
+  final Color? valueIconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +332,20 @@ class _InfoRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (valueIcon != null) ...[
+                Icon(
+                  valueIcon,
+                  size: 18,
+                  color: valueIconColor ?? Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(value, style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
         ],
       ),
     );
