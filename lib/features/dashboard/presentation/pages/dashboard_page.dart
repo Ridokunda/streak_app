@@ -214,9 +214,21 @@ class _StreakTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '${streak.currentStreak} day streak • ${streak.frequency.name.capitalize()}',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.local_fire_department,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${streak.currentStreak} day streak • ${streak.frequency.name.capitalize()}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
                     ),
                     if (badges.isNotEmpty) ...[
                       const SizedBox(height: 8),
