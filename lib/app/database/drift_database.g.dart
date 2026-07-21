@@ -89,6 +89,16 @@ class $StreaksTableTable extends StreaksTable
   late final GeneratedColumn<DateTime> lastCompleted =
       GeneratedColumn<DateTime>('last_completed', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _completedTodayMeta =
+      const VerificationMeta('completedToday');
+  @override
+  late final GeneratedColumn<bool> completedToday = GeneratedColumn<bool>(
+      'completed_today', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("completed_today" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _lastFreezeUsedMeta =
       const VerificationMeta('lastFreezeUsed');
   @override
@@ -150,6 +160,7 @@ class $StreaksTableTable extends StreaksTable
         reminderTimes,
         createdAt,
         lastCompleted,
+        completedToday,
         lastFreezeUsed,
         currentStreak,
         longestStreak,
@@ -230,6 +241,12 @@ class $StreaksTableTable extends StreaksTable
           lastCompleted.isAcceptableOrUnknown(
               data['last_completed']!, _lastCompletedMeta));
     }
+    if (data.containsKey('completed_today')) {
+      context.handle(
+          _completedTodayMeta,
+          completedToday.isAcceptableOrUnknown(
+              data['completed_today']!, _completedTodayMeta));
+    }
     if (data.containsKey('last_freeze_used')) {
       context.handle(
           _lastFreezeUsedMeta,
@@ -295,6 +312,8 @@ class $StreaksTableTable extends StreaksTable
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastCompleted: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_completed']),
+      completedToday: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}completed_today'])!,
       lastFreezeUsed: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_freeze_used']),
       currentStreak: attachedDatabase.typeMapping
@@ -329,6 +348,7 @@ class StreaksTableData extends DataClass
   final String reminderTimes;
   final DateTime createdAt;
   final DateTime? lastCompleted;
+  final bool completedToday;
   final DateTime? lastFreezeUsed;
   final int currentStreak;
   final int longestStreak;
@@ -347,6 +367,7 @@ class StreaksTableData extends DataClass
       required this.reminderTimes,
       required this.createdAt,
       this.lastCompleted,
+      required this.completedToday,
       this.lastFreezeUsed,
       required this.currentStreak,
       required this.longestStreak,
@@ -371,6 +392,7 @@ class StreaksTableData extends DataClass
     if (!nullToAbsent || lastCompleted != null) {
       map['last_completed'] = Variable<DateTime>(lastCompleted);
     }
+    map['completed_today'] = Variable<bool>(completedToday);
     if (!nullToAbsent || lastFreezeUsed != null) {
       map['last_freeze_used'] = Variable<DateTime>(lastFreezeUsed);
     }
@@ -399,6 +421,7 @@ class StreaksTableData extends DataClass
       lastCompleted: lastCompleted == null && nullToAbsent
           ? const Value.absent()
           : Value(lastCompleted),
+      completedToday: Value(completedToday),
       lastFreezeUsed: lastFreezeUsed == null && nullToAbsent
           ? const Value.absent()
           : Value(lastFreezeUsed),
@@ -425,6 +448,7 @@ class StreaksTableData extends DataClass
       reminderTimes: serializer.fromJson<String>(json['reminderTimes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastCompleted: serializer.fromJson<DateTime?>(json['lastCompleted']),
+      completedToday: serializer.fromJson<bool>(json['completedToday']),
       lastFreezeUsed: serializer.fromJson<DateTime?>(json['lastFreezeUsed']),
       currentStreak: serializer.fromJson<int>(json['currentStreak']),
       longestStreak: serializer.fromJson<int>(json['longestStreak']),
@@ -449,6 +473,7 @@ class StreaksTableData extends DataClass
       'reminderTimes': serializer.toJson<String>(reminderTimes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastCompleted': serializer.toJson<DateTime?>(lastCompleted),
+      'completedToday': serializer.toJson<bool>(completedToday),
       'lastFreezeUsed': serializer.toJson<DateTime?>(lastFreezeUsed),
       'currentStreak': serializer.toJson<int>(currentStreak),
       'longestStreak': serializer.toJson<int>(longestStreak),
@@ -470,6 +495,7 @@ class StreaksTableData extends DataClass
           String? reminderTimes,
           DateTime? createdAt,
           Value<DateTime?> lastCompleted = const Value.absent(),
+          bool? completedToday,
           Value<DateTime?> lastFreezeUsed = const Value.absent(),
           int? currentStreak,
           int? longestStreak,
@@ -489,6 +515,7 @@ class StreaksTableData extends DataClass
         createdAt: createdAt ?? this.createdAt,
         lastCompleted:
             lastCompleted.present ? lastCompleted.value : this.lastCompleted,
+        completedToday: completedToday ?? this.completedToday,
         lastFreezeUsed:
             lastFreezeUsed.present ? lastFreezeUsed.value : this.lastFreezeUsed,
         currentStreak: currentStreak ?? this.currentStreak,
@@ -523,6 +550,9 @@ class StreaksTableData extends DataClass
       lastCompleted: data.lastCompleted.present
           ? data.lastCompleted.value
           : this.lastCompleted,
+      completedToday: data.completedToday.present
+          ? data.completedToday.value
+          : this.completedToday,
       lastFreezeUsed: data.lastFreezeUsed.present
           ? data.lastFreezeUsed.value
           : this.lastFreezeUsed,
@@ -555,6 +585,7 @@ class StreaksTableData extends DataClass
           ..write('reminderTimes: $reminderTimes, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastCompleted: $lastCompleted, ')
+          ..write('completedToday: $completedToday, ')
           ..write('lastFreezeUsed: $lastFreezeUsed, ')
           ..write('currentStreak: $currentStreak, ')
           ..write('longestStreak: $longestStreak, ')
@@ -578,6 +609,7 @@ class StreaksTableData extends DataClass
       reminderTimes,
       createdAt,
       lastCompleted,
+      completedToday,
       lastFreezeUsed,
       currentStreak,
       longestStreak,
@@ -599,6 +631,7 @@ class StreaksTableData extends DataClass
           other.reminderTimes == this.reminderTimes &&
           other.createdAt == this.createdAt &&
           other.lastCompleted == this.lastCompleted &&
+          other.completedToday == this.completedToday &&
           other.lastFreezeUsed == this.lastFreezeUsed &&
           other.currentStreak == this.currentStreak &&
           other.longestStreak == this.longestStreak &&
@@ -619,6 +652,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
   final Value<String> reminderTimes;
   final Value<DateTime> createdAt;
   final Value<DateTime?> lastCompleted;
+  final Value<bool> completedToday;
   final Value<DateTime?> lastFreezeUsed;
   final Value<int> currentStreak;
   final Value<int> longestStreak;
@@ -637,6 +671,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     this.reminderTimes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastCompleted = const Value.absent(),
+    this.completedToday = const Value.absent(),
     this.lastFreezeUsed = const Value.absent(),
     this.currentStreak = const Value.absent(),
     this.longestStreak = const Value.absent(),
@@ -656,6 +691,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     this.reminderTimes = const Value.absent(),
     required DateTime createdAt,
     this.lastCompleted = const Value.absent(),
+    this.completedToday = const Value.absent(),
     this.lastFreezeUsed = const Value.absent(),
     this.currentStreak = const Value.absent(),
     this.longestStreak = const Value.absent(),
@@ -677,6 +713,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     Expression<String>? reminderTimes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastCompleted,
+    Expression<bool>? completedToday,
     Expression<DateTime>? lastFreezeUsed,
     Expression<int>? currentStreak,
     Expression<int>? longestStreak,
@@ -696,6 +733,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       if (reminderTimes != null) 'reminder_times': reminderTimes,
       if (createdAt != null) 'created_at': createdAt,
       if (lastCompleted != null) 'last_completed': lastCompleted,
+      if (completedToday != null) 'completed_today': completedToday,
       if (lastFreezeUsed != null) 'last_freeze_used': lastFreezeUsed,
       if (currentStreak != null) 'current_streak': currentStreak,
       if (longestStreak != null) 'longest_streak': longestStreak,
@@ -718,6 +756,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       Value<String>? reminderTimes,
       Value<DateTime>? createdAt,
       Value<DateTime?>? lastCompleted,
+      Value<bool>? completedToday,
       Value<DateTime?>? lastFreezeUsed,
       Value<int>? currentStreak,
       Value<int>? longestStreak,
@@ -736,6 +775,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
       reminderTimes: reminderTimes ?? this.reminderTimes,
       createdAt: createdAt ?? this.createdAt,
       lastCompleted: lastCompleted ?? this.lastCompleted,
+      completedToday: completedToday ?? this.completedToday,
       lastFreezeUsed: lastFreezeUsed ?? this.lastFreezeUsed,
       currentStreak: currentStreak ?? this.currentStreak,
       longestStreak: longestStreak ?? this.longestStreak,
@@ -781,6 +821,9 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
     if (lastCompleted.present) {
       map['last_completed'] = Variable<DateTime>(lastCompleted.value);
     }
+    if (completedToday.present) {
+      map['completed_today'] = Variable<bool>(completedToday.value);
+    }
     if (lastFreezeUsed.present) {
       map['last_freeze_used'] = Variable<DateTime>(lastFreezeUsed.value);
     }
@@ -816,6 +859,7 @@ class StreaksTableCompanion extends UpdateCompanion<StreaksTableData> {
           ..write('reminderTimes: $reminderTimes, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastCompleted: $lastCompleted, ')
+          ..write('completedToday: $completedToday, ')
           ..write('lastFreezeUsed: $lastFreezeUsed, ')
           ..write('currentStreak: $currentStreak, ')
           ..write('longestStreak: $longestStreak, ')
@@ -1971,6 +2015,7 @@ typedef $$StreaksTableTableCreateCompanionBuilder = StreaksTableCompanion
   Value<String> reminderTimes,
   required DateTime createdAt,
   Value<DateTime?> lastCompleted,
+  Value<bool> completedToday,
   Value<DateTime?> lastFreezeUsed,
   Value<int> currentStreak,
   Value<int> longestStreak,
@@ -1991,6 +2036,7 @@ typedef $$StreaksTableTableUpdateCompanionBuilder = StreaksTableCompanion
   Value<String> reminderTimes,
   Value<DateTime> createdAt,
   Value<DateTime?> lastCompleted,
+  Value<bool> completedToday,
   Value<DateTime?> lastFreezeUsed,
   Value<int> currentStreak,
   Value<int> longestStreak,
@@ -2042,6 +2088,10 @@ class $$StreaksTableTableFilterComposer
 
   ColumnFilters<DateTime> get lastCompleted => $composableBuilder(
       column: $table.lastCompleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get completedToday => $composableBuilder(
+      column: $table.completedToday,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get lastFreezeUsed => $composableBuilder(
       column: $table.lastFreezeUsed,
@@ -2112,6 +2162,10 @@ class $$StreaksTableTableOrderingComposer
       column: $table.lastCompleted,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get completedToday => $composableBuilder(
+      column: $table.completedToday,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get lastFreezeUsed => $composableBuilder(
       column: $table.lastFreezeUsed,
       builder: (column) => ColumnOrderings(column));
@@ -2177,6 +2231,9 @@ class $$StreaksTableTableAnnotationComposer
   GeneratedColumn<DateTime> get lastCompleted => $composableBuilder(
       column: $table.lastCompleted, builder: (column) => column);
 
+  GeneratedColumn<bool> get completedToday => $composableBuilder(
+      column: $table.completedToday, builder: (column) => column);
+
   GeneratedColumn<DateTime> get lastFreezeUsed => $composableBuilder(
       column: $table.lastFreezeUsed, builder: (column) => column);
 
@@ -2233,6 +2290,7 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             Value<String> reminderTimes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastCompleted = const Value.absent(),
+            Value<bool> completedToday = const Value.absent(),
             Value<DateTime?> lastFreezeUsed = const Value.absent(),
             Value<int> currentStreak = const Value.absent(),
             Value<int> longestStreak = const Value.absent(),
@@ -2252,6 +2310,7 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             reminderTimes: reminderTimes,
             createdAt: createdAt,
             lastCompleted: lastCompleted,
+            completedToday: completedToday,
             lastFreezeUsed: lastFreezeUsed,
             currentStreak: currentStreak,
             longestStreak: longestStreak,
@@ -2271,6 +2330,7 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             Value<String> reminderTimes = const Value.absent(),
             required DateTime createdAt,
             Value<DateTime?> lastCompleted = const Value.absent(),
+            Value<bool> completedToday = const Value.absent(),
             Value<DateTime?> lastFreezeUsed = const Value.absent(),
             Value<int> currentStreak = const Value.absent(),
             Value<int> longestStreak = const Value.absent(),
@@ -2290,6 +2350,7 @@ class $$StreaksTableTableTableManager extends RootTableManager<
             reminderTimes: reminderTimes,
             createdAt: createdAt,
             lastCompleted: lastCompleted,
+            completedToday: completedToday,
             lastFreezeUsed: lastFreezeUsed,
             currentStreak: currentStreak,
             longestStreak: longestStreak,

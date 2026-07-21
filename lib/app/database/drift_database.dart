@@ -19,6 +19,7 @@ class StreaksTable extends Table {
   TextColumn get reminderTimes => text().withDefault(const Constant('[]'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get lastCompleted => dateTime().nullable()();
+  BoolColumn get completedToday => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastFreezeUsed => dateTime().nullable()();
   IntColumn get currentStreak => integer().withDefault(const Constant(0))();
   IntColumn get longestStreak => integer().withDefault(const Constant(0))();
@@ -78,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +93,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await migrator.createTable(todosTable);
+          }
+          if (from < 5) {
+            await migrator.addColumn(streaksTable, streaksTable.completedToday);
           }
         },
       );

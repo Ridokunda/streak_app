@@ -12,6 +12,8 @@ class ReminderNotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  static const int _maxStreakReminderSlots = 100;
+  static const int _streakReminderHorizonDays = 14;
 
   Future<void> initialize() async {
     if (_initialized) {
@@ -59,11 +61,13 @@ class ReminderNotificationService {
       return;
     }
 
-    final uniqueTimes = streak.reminderTimes.toSet().toList()..sort();
+    final occurrences = _buildUpcomingOccurrences(
+      streak: streak,
+      now: tz.TZDateTime.now(tz.local),
+    );
 
-    for (var index = 0; index < uniqueTimes.length && index < 100; index++) {
-      final minutes = uniqueTimes[index];
-      final scheduledDate = _nextOccurrence(minutes);
+    for (var index = 0; index < occurrences.length && index < _maxStreakReminderSlots; index++) {
+      final scheduledDate = occurrences[index];
 
       await _plugin.zonedSchedule(
         id: _notificationId(streak.id!, index),
@@ -82,7 +86,6 @@ class ReminderNotificationService {
           macOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
         payload: 'streak:${streak.id}',
       );
     }
@@ -91,8 +94,18 @@ class ReminderNotificationService {
   Future<void> cancelStreakReminders(int streakId) async {
     await initialize();
 
-    for (var index = 0; index < 100; index++) {
+    for (var index = 0; index < _maxStreakReminderSlots; index++) {
       await _plugin.cancel(id: _notificationId(streakId, index));
+    }
+  }
+
+  Future<void> clearAllStreakReminders() async {
+    await initialize();
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final notification in pending) {
+      if ((notification.payload ?? '').startsWith('streak:')) {
+        await _plugin.cancel(id: notification.id);
+      }
     }
   }
 
@@ -150,15 +163,46 @@ class ReminderNotificationService {
     return 100000000 + todoId;
   }
 
-  tz.TZDateTime _nextOccurrence(int totalMinutes) {
-    final now = tz.TZDateTime.now(tz.local);
-    final hour = totalMinutes ~/ 60;
-    final minute = totalMinutes % 60;
+  List<tz.TZDateTime> _buildUpcomingOccurrences({
+    required Streak streak,
+    required tz.TZDateTime now,
+  }) {
+    final uniqueTimes = streak.reminderTimes.toSet().toList()..sort();
+    final occurrences = <tz.TZDateTime>[];
 
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    for (var dayOffset = 0; dayOffset < _streakReminderHorizonDays; dayOffset++) {
+      final date = now.add(Duration(days: dayOffset));
+      if (streak.completedToday && _isSameCalendarDay(date, now)) {
+        continue;
+      }
+
+      for (final minutes in uniqueTimes) {
+        final hour = minutes ~/ 60;
+        final minute = minutes % 60;
+        final scheduled = tz.TZDateTime(
+          tz.local,
+          date.year,
+          date.month,
+          date.day,
+          hour,
+          minute,
+        );
+
+        if (!scheduled.isAfter(now)) {
+          continue;
+        }
+
+        occurrences.add(scheduled);
+        if (occurrences.length >= _maxStreakReminderSlots) {
+          return occurrences;
+        }
+      }
     }
-    return scheduled;
+
+    return occurrences;
+  }
+
+  bool _isSameCalendarDay(tz.TZDateTime first, tz.TZDateTime second) {
+    return first.year == second.year && first.month == second.month && first.day == second.day;
   }
 }

@@ -18,6 +18,7 @@ class Streak {
   late DateTime createdAt;
 
   DateTime? lastCompleted;
+  bool completedToday = false;
 
   DateTime? lastFreezeUsed;
 
@@ -41,6 +42,7 @@ class Streak {
     this.remindersEnabled = false,
     this.reminderTimes = const [],
     this.lastCompleted,
+    this.completedToday = false,
     this.currentStreak = 0,
     this.longestStreak = 0,
     this.freezeCount = 0,

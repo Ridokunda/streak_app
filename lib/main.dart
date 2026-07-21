@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/database/drift_database.dart';
+import 'features/streaks/data/repositories/streak_repository.dart';
 import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/notifications/data/services/reminder_notification_service.dart';
 import 'app/theme/app_theme.dart';
@@ -12,6 +13,13 @@ Future<void> main() async {
 
   await AppDatabase.instance();
   await ReminderNotificationService.instance.initialize();
+  final streakRepository = StreakRepository(db: await AppDatabase.instance());
+  await streakRepository.refreshStreakCompletionFlags();
+  await ReminderNotificationService.instance.clearAllStreakReminders();
+  final streaks = await streakRepository.getAll();
+  for (final streak in streaks) {
+    await ReminderNotificationService.instance.syncStreakReminders(streak);
+  }
 
   runApp(
     const ProviderScope(

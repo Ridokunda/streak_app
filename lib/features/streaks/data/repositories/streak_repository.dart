@@ -63,6 +63,23 @@ class StreakRepository {
     return rows.map(_completionFromRow).toList();
   }
 
+  Future<void> refreshStreakCompletionFlags() async {
+    final db = await _dbInstance;
+    final rows = await db.select(db.streaksTable).get();
+    final today = DateTime.now();
+
+    for (final row in rows) {
+      final shouldBeCompletedToday = row.lastCompleted != null && _isSameDay(row.lastCompleted!, today);
+      if (row.completedToday != shouldBeCompletedToday) {
+        await (db.update(db.streaksTable)..where((t) => t.id.equals(row.id))).write(
+          StreaksTableCompanion(
+            completedToday: Value(shouldBeCompletedToday),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> markCompleted(int streakId, {DateTime? completedDate}) async {
     final db = await _dbInstance;
     final date = completedDate ?? DateTime.now();
@@ -153,12 +170,20 @@ class StreakRepository {
           currentStreak: Value(newCurrentStreak),
           longestStreak: Value(max(streakRow.longestStreak, newCurrentStreak)),
           lastCompleted: Value(today),
+          completedToday: const Value(true),
           freezeCount: Value(newFreezeCount),
           lastFreezeUsed: Value(lastFreezeUsed),
           completedSinceFreeze: Value(completedSinceFreeze),
         ),
       );
     });
+
+    if (_syncNotifications) {
+      final streak = await getById(streakId);
+      if (streak != null) {
+        await ReminderNotificationService.instance.syncStreakReminders(streak);
+      }
+    }
 
     await _syncAchievements();
   }
@@ -217,6 +242,7 @@ class StreakRepository {
       reminderTimes: Value(jsonEncode(streak.reminderTimes)),
       createdAt: Value(streak.createdAt),
       lastCompleted: Value(streak.lastCompleted),
+      completedToday: Value(streak.completedToday),
       lastFreezeUsed: Value(streak.lastFreezeUsed),
       currentStreak: Value(streak.currentStreak),
       longestStreak: Value(streak.longestStreak),
@@ -242,6 +268,7 @@ class StreakRepository {
       reminderTimes: jsonEncode(streak.reminderTimes),
       createdAt: streak.createdAt,
       lastCompleted: streak.lastCompleted,
+      completedToday: streak.completedToday,
       lastFreezeUsed: streak.lastFreezeUsed,
       currentStreak: streak.currentStreak,
       longestStreak: streak.longestStreak,
@@ -279,6 +306,7 @@ class StreakRepository {
         reminderTimes: reminderTimes,
       createdAt: row.createdAt,
       lastCompleted: row.lastCompleted,
+      completedToday: row.completedToday,
       lastFreezeUsed: row.lastFreezeUsed,
       currentStreak: row.currentStreak,
       longestStreak: row.longestStreak,
@@ -295,5 +323,9 @@ class StreakRepository {
       completedDate: row.completedDate,
       usedFreeze: row.usedFreeze,
     );
+  }
+
+  bool _isSameDay(DateTime first, DateTime second) {
+    return first.year == second.year && first.month == second.month && first.day == second.day;
   }
 }
