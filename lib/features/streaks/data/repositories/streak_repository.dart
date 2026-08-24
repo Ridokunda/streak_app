@@ -8,6 +8,7 @@ import '../../../../core/enums/frequency.dart';
 import '../../../achievements/data/repositories/achievement_repository.dart';
 import '../../../notifications/data/services/reminder_notification_service.dart';
 import '../models/completion.dart';
+import '../models/monthly_completion_summary.dart';
 import '../models/streak.dart';
 
 class StreakRepository {
@@ -61,6 +62,54 @@ class StreakRepository {
           ..orderBy([(t) => OrderingTerm.desc(t.completedDate)]))
         .get();
     return rows.map(_completionFromRow).toList();
+  }
+
+  Future<MonthlyCompletionSummary> getMonthlyCompletionSummary(
+    int streakId,
+    DateTime month,
+  ) async {
+    final completions = await getCompletionsForStreak(streakId);
+    final normalizedMonth = DateTime(month.year, month.month);
+    final monthStart = DateTime(normalizedMonth.year, normalizedMonth.month, 1);
+    final nextMonth = DateTime(
+      normalizedMonth.month == 12 ? normalizedMonth.year + 1 : normalizedMonth.year,
+      normalizedMonth.month == 12 ? 1 : normalizedMonth.month + 1,
+      1,
+    );
+
+    final completedDates = completions
+        .map((completion) => completion.completedDate)
+        .where((date) => !date.isBefore(monthStart) && date.isBefore(nextMonth))
+        .toList()
+      ..sort();
+
+    final totalDaysInMonth = DateTime(normalizedMonth.year, normalizedMonth.month + 1, 0).day;
+    final monthDates = List.generate(
+      totalDaysInMonth,
+      (index) => DateTime(normalizedMonth.year, normalizedMonth.month, index + 1),
+    );
+
+    final completedSet = completedDates
+        .map((date) => DateTime(date.year, date.month, date.day))
+        .toSet();
+    final missedDates = monthDates
+        .where((date) => !completedSet.contains(DateTime(date.year, date.month, date.day)))
+        .toList();
+
+    final completedCount = completedDates.length;
+    final missedCount = missedDates.length;
+    final completionRate = totalDaysInMonth == 0
+        ? 0.0
+        : (completedCount / totalDaysInMonth) * 100;
+
+    return MonthlyCompletionSummary(
+      month: normalizedMonth,
+      completedDates: completedDates,
+      missedDates: missedDates,
+      completedCount: completedCount,
+      missedCount: missedCount,
+      completionRate: completionRate.toDouble(),
+    );
   }
 
   Future<void> refreshStreakCompletionFlags() async {

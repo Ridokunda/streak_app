@@ -118,4 +118,22 @@ void main() {
     final unlockedAtMap = await achievementRepository.getUnlockedAtMap();
     expect(unlockedAtMap[AchievementKeys.sevenDaySprint], isNotNull);
   });
+
+  test('builds a monthly completion summary for the calendar view', () async {
+    final streakId = await createDailyStreak();
+
+    for (var day in [1, 2, 4, 5, 7, 8, 9, 10, 14, 15, 16]) {
+      await repository.markCompleted(streakId, completedDate: DateTime(2026, 3, day));
+    }
+
+    final summary = await repository.getMonthlyCompletionSummary(streakId, DateTime(2026, 3));
+
+    expect(summary.month.year, 2026);
+    expect(summary.month.month, 3);
+    expect(summary.completedCount, 11);
+    expect(summary.missedCount, 20);
+    expect(summary.completionRate, closeTo(35.48, 0.1));
+    expect(summary.completedDates.contains(DateTime(2026, 3, 1)), isTrue);
+    expect(summary.missedDates.contains(DateTime(2026, 3, 3)), isTrue);
+  });
 }

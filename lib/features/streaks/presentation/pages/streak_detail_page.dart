@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../achievements/domain/achievement_catalog.dart';
 import '../../../../core/enums/frequency.dart';
 import '../../data/models/completion.dart';
+import '../../data/models/monthly_completion_summary.dart';
 import '../../data/models/streak.dart';
 import '../providers/streak_provider.dart';
 
@@ -20,10 +21,13 @@ class StreakDetailPage extends ConsumerStatefulWidget {
 class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
   late Future<Streak?> _streakFuture;
   late Future<List<Completion>> _completionFuture;
+  late Future<MonthlyCompletionSummary> _monthlySummaryFuture;
+  late DateTime _selectedMonth;
 
   @override
   void initState() {
     super.initState();
+    _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
     _loadData();
   }
 
@@ -31,6 +35,15 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     final repository = ref.read(streakRepositoryProvider);
     _streakFuture = repository.getById(widget.streakId);
     _completionFuture = repository.getCompletionsForStreak(widget.streakId);
+    _monthlySummaryFuture = repository.getMonthlyCompletionSummary(widget.streakId, _selectedMonth);
+  }
+
+  void _changeSelectedMonth(int offset) {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset);
+      final repository = ref.read(streakRepositoryProvider);
+      _monthlySummaryFuture = repository.getMonthlyCompletionSummary(widget.streakId, _selectedMonth);
+    });
   }
 
   Future<void> _markCompleted() async {
@@ -112,6 +125,65 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     }
     await repository.update(streak);
     setState(_loadData);
+  }
+
+  List<Widget> _buildCalendarCells(MonthlyCompletionSummary summary) {
+    final weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    final firstDayOfMonth = DateTime(summary.month.year, summary.month.month, 1);
+    final lastDayOfMonth = DateTime(summary.month.year, summary.month.month + 1, 0);
+    final daysBeforeMonth = firstDayOfMonth.weekday % 7;
+    final monthDates = List.generate(
+      lastDayOfMonth.day,
+      (index) => DateTime(summary.month.year, summary.month.month, index + 1),
+    );
+    final completedSet = summary.completedDates
+        .map((date) => DateTime(date.year, date.month, date.day))
+        .toSet();
+
+    final cells = <Widget>[];
+    for (final label in weekdayLabels) {
+      cells.add(
+        Center(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    for (var i = 0; i < daysBeforeMonth; i++) {
+      cells.add(const SizedBox.shrink());
+    }
+
+    for (final date in monthDates) {
+      final isCompleted = completedSet.contains(date);
+      cells.add(
+        Container(
+          decoration: BoxDecoration(
+            color: isCompleted ? Colors.green.shade100 : Colors.grey.shade100,
+            border: Border.all(
+              color: isCompleted ? Colors.green : Colors.grey.shade300,
+              width: isCompleted ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            date.day.toString(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isCompleted ? Colors.green.shade900 : Colors.grey.shade700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return cells;
   }
 
   @override
@@ -231,6 +303,78 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+                      FutureBuilder<MonthlyCompletionSummary>(
+                        future: _monthlySummaryFuture,
+                        builder: (context, summarySnapshot) {
+                          final summary = summarySnapshot.data;
+
+                          return Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Monthly completion',
+                                        style: Theme.of(context).textTheme.titleMedium,
+                                      ),
+                                      const Spacer(),
+                                      IconButton(
+                                        tooltip: 'Previous month',
+                                        onPressed: () => _changeSelectedMonth(-1),
+                                        icon: const Icon(Icons.chevron_left),
+                                      ),
+                                      Text(
+                                        '${_selectedMonth.month}/${_selectedMonth.year}',
+                                        style: Theme.of(context).textTheme.titleSmall,
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Next month',
+                                        onPressed: () => _changeSelectedMonth(1),
+                                        icon: const Icon(Icons.chevron_right),
+                                      ),
+                                    ],
+                                  ),
+                                  if (summary == null)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      child: Center(child: CircularProgressIndicator()),
+                                    )
+                                  else ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${summary.completedCount} completions',
+                                          style: Theme.of(context).textTheme.bodyLarge,
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${summary.completionRate.toStringAsFixed(1)}% complete',
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    GridView.count(
+                                      crossAxisCount: 7,
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      mainAxisSpacing: 6,
+                                      crossAxisSpacing: 6,
+                                      childAspectRatio: 1,
+                                      children: _buildCalendarCells(summary),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
                       Card(
