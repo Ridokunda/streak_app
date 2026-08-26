@@ -35,14 +35,17 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     final repository = ref.read(streakRepositoryProvider);
     _streakFuture = repository.getById(widget.streakId);
     _completionFuture = repository.getCompletionsForStreak(widget.streakId);
-    _monthlySummaryFuture = repository.getMonthlyCompletionSummary(widget.streakId, _selectedMonth);
+    _monthlySummaryFuture =
+        repository.getMonthlyCompletionSummary(widget.streakId, _selectedMonth);
   }
 
   void _changeSelectedMonth(int offset) {
     setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset);
+      _selectedMonth =
+          DateTime(_selectedMonth.year, _selectedMonth.month + offset);
       final repository = ref.read(streakRepositoryProvider);
-      _monthlySummaryFuture = repository.getMonthlyCompletionSummary(widget.streakId, _selectedMonth);
+      _monthlySummaryFuture = repository.getMonthlyCompletionSummary(
+          widget.streakId, _selectedMonth);
     });
   }
 
@@ -66,6 +69,37 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     final minute = totalMinutes % 60;
     final time = TimeOfDay(hour: hour, minute: minute);
     return MaterialLocalizations.of(context).formatTimeOfDay(time);
+  }
+
+  bool _canCompleteToday(Streak streak) {
+    final today = DateTime.now();
+    final lastCompleted = streak.lastCompleted;
+
+    if (lastCompleted != null &&
+        lastCompleted.year == today.year &&
+        lastCompleted.month == today.month &&
+        lastCompleted.day == today.day) {
+      return false;
+    }
+
+    switch (streak.frequency) {
+      case Frequency.daily:
+        return true;
+      case Frequency.weekly:
+        if (lastCompleted == null) {
+          return true;
+        }
+        final todayWeekStart =
+            today.subtract(Duration(days: today.weekday - DateTime.monday));
+        final lastWeekStart = lastCompleted.subtract(
+          Duration(days: lastCompleted.weekday - DateTime.monday),
+        );
+        return todayWeekStart.year != lastWeekStart.year ||
+            todayWeekStart.month != lastWeekStart.month ||
+            todayWeekStart.day != lastWeekStart.day;
+      case Frequency.custom:
+        return streak.scheduledDays.contains(today.weekday);
+    }
   }
 
   Future<void> _toggleReminders(Streak streak, bool enabled) async {
@@ -129,8 +163,10 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
 
   List<Widget> _buildCalendarCells(MonthlyCompletionSummary summary) {
     final weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    final firstDayOfMonth = DateTime(summary.month.year, summary.month.month, 1);
-    final lastDayOfMonth = DateTime(summary.month.year, summary.month.month + 1, 0);
+    final firstDayOfMonth =
+        DateTime(summary.month.year, summary.month.month, 1);
+    final lastDayOfMonth =
+        DateTime(summary.month.year, summary.month.month + 1, 0);
     final daysBeforeMonth = firstDayOfMonth.weekday % 7;
     final monthDates = List.generate(
       lastDayOfMonth.day,
@@ -147,9 +183,9 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
         ),
       );
@@ -192,10 +228,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
       future: _streakFuture,
       builder: (context, snapshot) {
         final streak = snapshot.data;
-        final isTodayScheduled = streak == null
-            ? false
-            : (streak.frequency != Frequency.custom ||
-                streak.scheduledDays.contains(DateTime.now().weekday));
+        final canCompleteToday = streak != null && _canCompleteToday(streak);
 
         return Scaffold(
           appBar: AppBar(
@@ -213,15 +246,16 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
               ),
             ],
           ),
-          floatingActionButton: snapshot.connectionState == ConnectionState.done &&
-                  streak != null &&
-                  isTodayScheduled
-              ? FloatingActionButton.extended(
-                  onPressed: _markCompleted,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Complete today'),
-                )
-              : null,
+          floatingActionButton:
+              snapshot.connectionState == ConnectionState.done &&
+                      streak != null &&
+                      canCompleteToday
+                  ? FloatingActionButton.extended(
+                      onPressed: _markCompleted,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Complete today'),
+                    )
+                  : null,
           body: Builder(
             builder: (context) {
               if (snapshot.connectionState != ConnectionState.done) {
@@ -238,11 +272,13 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
               return FutureBuilder<List<Completion>>(
                 future: _completionFuture,
                 builder: (context, completionsSnapshot) {
-                  if (completionsSnapshot.connectionState != ConnectionState.done) {
+                  if (completionsSnapshot.connectionState !=
+                      ConnectionState.done) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final completions = completionsSnapshot.data ?? <Completion>[];
+                  final completions =
+                      completionsSnapshot.data ?? <Completion>[];
 
                   return ListView(
                     padding: const EdgeInsets.all(16),
@@ -278,25 +314,35 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _InfoRow(label: 'Frequency', value: frequencyLabel),
+                              _InfoRow(
+                                  label: 'Frequency', value: frequencyLabel),
                               _InfoRow(
                                 label: 'Current streak',
                                 value: '${streak.currentStreak} days',
                                 valueIcon: Icons.local_fire_department,
                                 valueIconColor: Colors.orange,
                               ),
-                              _InfoRow(label: 'Best streak', value: '${streak.longestStreak} days'),
-                              _InfoRow(label: 'Freezes', value: '${streak.freezeCount}'),
+                              _InfoRow(
+                                  label: 'Best streak',
+                                  value: '${streak.longestStreak} days'),
+                              _InfoRow(
+                                  label: 'Freezes',
+                                  value: '${streak.freezeCount}'),
                               _InfoRow(
                                 label: 'Reminders',
-                                value: streak.remindersEnabled ? '${streak.reminderTimes.length}' : 'Off',
+                                value: streak.remindersEnabled
+                                    ? '${streak.reminderTimes.length}'
+                                    : 'Off',
                               ),
                               _InfoRow(
                                 label: 'Completed today',
                                 value: completions.isNotEmpty &&
-                                        completions.first.completedDate.year == DateTime.now().year &&
-                                        completions.first.completedDate.month == DateTime.now().month &&
-                                        completions.first.completedDate.day == DateTime.now().day
+                                        completions.first.completedDate.year ==
+                                            DateTime.now().year &&
+                                        completions.first.completedDate.month ==
+                                            DateTime.now().month &&
+                                        completions.first.completedDate.day ==
+                                            DateTime.now().day
                                     ? 'Yes'
                                     : 'No',
                               ),
@@ -320,29 +366,37 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                                     children: [
                                       Text(
                                         'Monthly completion',
-                                        style: Theme.of(context).textTheme.titleMedium,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
                                       ),
                                       const Spacer(),
                                       IconButton(
                                         tooltip: 'Previous month',
-                                        onPressed: () => _changeSelectedMonth(-1),
+                                        onPressed: () =>
+                                            _changeSelectedMonth(-1),
                                         icon: const Icon(Icons.chevron_left),
                                       ),
                                       Text(
                                         '${_selectedMonth.month}/${_selectedMonth.year}',
-                                        style: Theme.of(context).textTheme.titleSmall,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall,
                                       ),
                                       IconButton(
                                         tooltip: 'Next month',
-                                        onPressed: () => _changeSelectedMonth(1),
+                                        onPressed: () =>
+                                            _changeSelectedMonth(1),
                                         icon: const Icon(Icons.chevron_right),
                                       ),
                                     ],
                                   ),
                                   if (summary == null)
                                     const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 16),
-                                      child: Center(child: CircularProgressIndicator()),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
+                                      child: Center(
+                                          child: CircularProgressIndicator()),
                                     )
                                   else ...[
                                     const SizedBox(height: 8),
@@ -350,12 +404,16 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                                       children: [
                                         Text(
                                           '${summary.completedCount} completions',
-                                          style: Theme.of(context).textTheme.bodyLarge,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge,
                                         ),
                                         const Spacer(),
                                         Text(
                                           '${summary.completionRate.toStringAsFixed(1)}% complete',
-                                          style: Theme.of(context).textTheme.titleMedium,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium,
                                         ),
                                       ],
                                     ),
@@ -363,7 +421,8 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                                     GridView.count(
                                       crossAxisCount: 7,
                                       shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
                                       mainAxisSpacing: 6,
                                       crossAxisSpacing: 6,
                                       childAspectRatio: 1,
@@ -386,33 +445,43 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                               SwitchListTile.adaptive(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('Reminder notifications'),
-                                subtitle: const Text('Enable reminder notifications for this streak.'),
+                                subtitle: const Text(
+                                    'Enable reminder notifications for this streak.'),
                                 value: streak.remindersEnabled,
-                                onChanged: (value) => _toggleReminders(streak, value),
+                                onChanged: (value) =>
+                                    _toggleReminders(streak, value),
                               ),
                               if (streak.remindersEnabled) ...[
                                 const SizedBox(height: 8),
                                 if (streak.reminderTimes.isEmpty)
                                   const Text('No reminder times yet.')
                                 else
-                                  ...List.generate(streak.reminderTimes.length, (index) {
+                                  ...List.generate(streak.reminderTimes.length,
+                                      (index) {
                                     final minutes = streak.reminderTimes[index];
                                     return ListTile(
                                       contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(Icons.notifications_active_outlined),
-                                      title: Text(_formatReminderMinutes(minutes)),
+                                      leading: const Icon(
+                                          Icons.notifications_active_outlined),
+                                      title:
+                                          Text(_formatReminderMinutes(minutes)),
                                       trailing: Wrap(
                                         spacing: 4,
                                         children: [
                                           IconButton(
                                             tooltip: 'Edit reminder time',
-                                            onPressed: () => _editReminderTime(streak, index),
-                                            icon: const Icon(Icons.edit_outlined),
+                                            onPressed: () => _editReminderTime(
+                                                streak, index),
+                                            icon:
+                                                const Icon(Icons.edit_outlined),
                                           ),
                                           IconButton(
                                             tooltip: 'Delete reminder time',
-                                            onPressed: () => _deleteReminderTime(streak, index),
-                                            icon: const Icon(Icons.delete_outline),
+                                            onPressed: () =>
+                                                _deleteReminderTime(
+                                                    streak, index),
+                                            icon: const Icon(
+                                                Icons.delete_outline),
                                           ),
                                         ],
                                       ),
@@ -430,7 +499,8 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Text('Recent completions', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Recent completions',
+                          style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
                       if (completions.isEmpty)
                         const Text('No completions yet.')
@@ -483,7 +553,8 @@ class _InfoRow extends StatelessWidget {
                 Icon(
                   valueIcon,
                   size: 18,
-                  color: valueIconColor ?? Theme.of(context).colorScheme.primary,
+                  color:
+                      valueIconColor ?? Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 4),
               ],

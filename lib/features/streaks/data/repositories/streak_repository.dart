@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -19,11 +19,13 @@ class StreakRepository {
   final AppDatabase? _db;
   final bool _syncNotifications;
 
-  Future<AppDatabase> get _dbInstance async => _db ?? await AppDatabase.instance();
+  Future<AppDatabase> get _dbInstance async =>
+      _db ?? await AppDatabase.instance();
 
   Future<int> add(Streak streak) async {
     final db = await _dbInstance;
-    final id = await db.into(db.streaksTable).insert(_streakToCompanion(streak));
+    final id =
+        await db.into(db.streaksTable).insert(_streakToCompanion(streak));
     await _syncAchievements();
 
     if (_syncNotifications) {
@@ -44,7 +46,10 @@ class StreakRepository {
 
   Stream<List<Streak>> watchAll() async* {
     final db = await _dbInstance;
-    yield* db.select(db.streaksTable).watch().map((rows) => rows.map(_streakFromRow).toList());
+    yield* db
+        .select(db.streaksTable)
+        .watch()
+        .map((rows) => rows.map(_streakFromRow).toList());
   }
 
   Future<Streak?> getById(int id) async {
@@ -72,7 +77,9 @@ class StreakRepository {
     final normalizedMonth = DateTime(month.year, month.month);
     final monthStart = DateTime(normalizedMonth.year, normalizedMonth.month, 1);
     final nextMonth = DateTime(
-      normalizedMonth.month == 12 ? normalizedMonth.year + 1 : normalizedMonth.year,
+      normalizedMonth.month == 12
+          ? normalizedMonth.year + 1
+          : normalizedMonth.year,
       normalizedMonth.month == 12 ? 1 : normalizedMonth.month + 1,
       1,
     );
@@ -83,24 +90,26 @@ class StreakRepository {
         .toList()
       ..sort();
 
-    final totalDaysInMonth = DateTime(normalizedMonth.year, normalizedMonth.month + 1, 0).day;
+    final totalDaysInMonth =
+        DateTime(normalizedMonth.year, normalizedMonth.month + 1, 0).day;
     final monthDates = List.generate(
       totalDaysInMonth,
-      (index) => DateTime(normalizedMonth.year, normalizedMonth.month, index + 1),
+      (index) =>
+          DateTime(normalizedMonth.year, normalizedMonth.month, index + 1),
     );
 
     final completedSet = completedDates
         .map((date) => DateTime(date.year, date.month, date.day))
         .toSet();
     final missedDates = monthDates
-        .where((date) => !completedSet.contains(DateTime(date.year, date.month, date.day)))
+        .where((date) =>
+            !completedSet.contains(DateTime(date.year, date.month, date.day)))
         .toList();
 
     final completedCount = completedDates.length;
     final missedCount = missedDates.length;
-    final completionRate = totalDaysInMonth == 0
-        ? 0.0
-        : (completedCount / totalDaysInMonth) * 100;
+    final completionRate =
+        totalDaysInMonth == 0 ? 0.0 : (completedCount / totalDaysInMonth) * 100;
 
     return MonthlyCompletionSummary(
       month: normalizedMonth,
@@ -118,9 +127,11 @@ class StreakRepository {
     final today = DateTime.now();
 
     for (final row in rows) {
-      final shouldBeCompletedToday = row.lastCompleted != null && _isSameDay(row.lastCompleted!, today);
+      final shouldBeCompletedToday =
+          row.lastCompleted != null && _isSameDay(row.lastCompleted!, today);
       if (row.completedToday != shouldBeCompletedToday) {
-        await (db.update(db.streaksTable)..where((t) => t.id.equals(row.id))).write(
+        await (db.update(db.streaksTable)..where((t) => t.id.equals(row.id)))
+            .write(
           StreaksTableCompanion(
             completedToday: Value(shouldBeCompletedToday),
           ),
@@ -155,6 +166,21 @@ class StreakRepository {
       }
 
       final today = DateTime(date.year, date.month, date.day);
+      final frequency = Frequency.values.firstWhere(
+        (value) => value.name == streakRow.frequency,
+        orElse: () => Frequency.daily,
+      );
+      final Set<int> scheduledDays = streakRow.scheduledDays.isEmpty
+          ? <int>{}
+          : (jsonDecode(streakRow.scheduledDays) as List)
+              .map((value) => int.parse(value.toString()))
+              .toSet();
+
+      if (frequency == Frequency.custom &&
+          !scheduledDays.contains(today.weekday)) {
+        return;
+      }
+
       var usedFreeze = false;
       var newFreezeCount = streakRow.freezeCount;
       var newCurrentStreak = streakRow.currentStreak;
@@ -173,21 +199,33 @@ class StreakRepository {
           return;
         }
 
-        if (gapDays == 1) {
+        final scheduleGap = _scheduleGap(
+          previousDay,
+          today,
+          frequency: frequency,
+          scheduledDays: scheduledDays,
+        );
+
+        // Weekly streaks can only be completed once in the same calendar week.
+        if (scheduleGap < 0) {
+          return;
+        }
+
+        if (scheduleGap == 0) {
           newCurrentStreak = streakRow.currentStreak + 1;
           completedSinceFreeze = streakRow.completedSinceFreeze + 1;
         } else {
-          final missedDays = gapDays - 1;
-          if (newFreezeCount >= missedDays) {
+          if (newFreezeCount >= scheduleGap) {
             usedFreeze = true;
-            newFreezeCount -= missedDays;
+            newFreezeCount -= scheduleGap;
             lastFreezeUsed = today;
             newCurrentStreak = streakRow.currentStreak + 1;
           } else {
             newCurrentStreak = 1;
           }
 
-          // A missed day breaks consecutive completions, even if a freeze saves the streak.
+          // A missed scheduled occurrence breaks consecutive completions, even if
+          // a freeze saves the streak.
           completedSinceFreeze = 1;
         }
       } else {
@@ -196,12 +234,12 @@ class StreakRepository {
       }
 
       await db.into(db.completionsTable).insert(
-        CompletionsTableCompanion.insert(
-          streakId: streakId,
-          completedDate: date,
-          usedFreeze: Value(usedFreeze),
-        ),
-      );
+            CompletionsTableCompanion.insert(
+              streakId: streakId,
+              completedDate: date,
+              usedFreeze: Value(usedFreeze),
+            ),
+          );
 
       while (completedSinceFreeze >= 5 && newFreezeCount < 3) {
         completedSinceFreeze -= 5;
@@ -212,8 +250,7 @@ class StreakRepository {
         completedSinceFreeze = 4;
       }
 
-      await (db.update(db.streaksTable)
-            ..where((t) => t.id.equals(streakId)))
+      await (db.update(db.streaksTable)..where((t) => t.id.equals(streakId)))
           .write(
         StreaksTableCompanion(
           currentStreak: Value(newCurrentStreak),
@@ -248,9 +285,7 @@ class StreakRepository {
       await (db.delete(db.completionsTable)
             ..where((t) => t.streakId.equals(id)))
           .go();
-      await (db.delete(db.streaksTable)
-            ..where((t) => t.id.equals(id)))
-          .go();
+      await (db.delete(db.streaksTable)..where((t) => t.id.equals(id))).go();
     });
 
     await _syncAchievements();
@@ -335,8 +370,10 @@ class StreakRepository {
             .toList();
 
     final reminderTimes = decodedReminderTimes.isNotEmpty
-      ? decodedReminderTimes
-      : (row.remindersEnabled ? <int>[row.reminderHour * 60 + row.reminderMinute] : <int>[]);
+        ? decodedReminderTimes
+        : (row.remindersEnabled
+            ? <int>[row.reminderHour * 60 + row.reminderMinute]
+            : <int>[]);
 
     return Streak(
       id: row.id,
@@ -351,8 +388,8 @@ class StreakRepository {
           : (jsonDecode(row.scheduledDays) as List)
               .map((value) => int.parse(value.toString()))
               .toList(),
-        remindersEnabled: row.remindersEnabled,
-        reminderTimes: reminderTimes,
+      remindersEnabled: row.remindersEnabled,
+      reminderTimes: reminderTimes,
       createdAt: row.createdAt,
       lastCompleted: row.lastCompleted,
       completedToday: row.completedToday,
@@ -375,6 +412,41 @@ class StreakRepository {
   }
 
   bool _isSameDay(DateTime first, DateTime second) {
-    return first.year == second.year && first.month == second.month && first.day == second.day;
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
+  int _scheduleGap(
+    DateTime previous,
+    DateTime current, {
+    required Frequency frequency,
+    required Set<int> scheduledDays,
+  }) {
+    switch (frequency) {
+      case Frequency.daily:
+        return current.difference(previous).inDays - 1;
+      case Frequency.weekly:
+        final previousWeek = _startOfWeek(previous);
+        final currentWeek = _startOfWeek(current);
+        final weeksApart = currentWeek.difference(previousWeek).inDays ~/ 7;
+        return weeksApart - 1;
+      case Frequency.custom:
+        var missedScheduledDays = 0;
+        var cursor = previous.add(const Duration(days: 1));
+        while (cursor.isBefore(current)) {
+          if (scheduledDays.contains(cursor.weekday)) {
+            missedScheduledDays += 1;
+          }
+          cursor = cursor.add(const Duration(days: 1));
+        }
+        return missedScheduledDays;
+    }
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    return normalized
+        .subtract(Duration(days: normalized.weekday - DateTime.monday));
   }
 }
