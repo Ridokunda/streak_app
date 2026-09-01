@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/models/todo_item.dart';
+import '../../../settings/data/services/haptics_service.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/todo_provider.dart';
 
 class TodoPage extends ConsumerWidget {
@@ -29,13 +31,16 @@ class TodoPage extends ConsumerWidget {
               } else {
                 await repository.update(result);
               }
+              await HapticsService.success(
+                  enabled: ref.read(hapticsEnabledProvider));
             },
           ),
         ],
       ),
       body: todosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Unable to load to-dos: $error')),
+        error: (error, stack) =>
+            Center(child: Text('Unable to load to-dos: $error')),
         data: (items) {
           if (items.isEmpty) {
             return Center(
@@ -44,7 +49,8 @@ class TodoPage extends ConsumerWidget {
                 children: [
                   const Icon(Icons.checklist, size: 48),
                   const SizedBox(height: 12),
-                  Text('No to-do items yet', style: Theme.of(context).textTheme.titleMedium),
+                  Text('No to-do items yet',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(
                     'Tap + to add your first task.',
@@ -76,16 +82,18 @@ class TodoPage extends ConsumerWidget {
           } else {
             await repository.update(result);
           }
+          await HapticsService.success(
+              enabled: ref.read(hapticsEnabledProvider));
         },
         icon: const Icon(Icons.add),
         label: const Text('Add task'),
       ),
     );
   }
-
 }
 
-Future<TodoItem?> showTodoDialog(BuildContext context, {TodoItem? existing}) async {
+Future<TodoItem?> showTodoDialog(BuildContext context,
+    {TodoItem? existing}) async {
   return showDialog<TodoItem?>(
     context: context,
     builder: (_) => _TodoDialog(existing: existing),
@@ -109,7 +117,8 @@ class _TodoDialogState extends State<_TodoDialog> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.existing?.title ?? '');
+    _titleController =
+        TextEditingController(text: widget.existing?.title ?? '');
     _reminderEnabled = widget.existing?.reminderEnabled ?? false;
     _reminderAt = widget.existing?.reminderAt;
   }
@@ -153,7 +162,9 @@ class _TodoDialogState extends State<_TodoDialog> {
     if (title.isEmpty) return;
     if (_reminderEnabled && _reminderAt == null) return;
 
-    final result = (widget.existing ?? TodoItem(title: title, createdAt: DateTime.now())).copyWith(
+    final result =
+        (widget.existing ?? TodoItem(title: title, createdAt: DateTime.now()))
+            .copyWith(
       title: title,
       reminderEnabled: _reminderEnabled,
       reminderAt: _reminderAt,
@@ -243,9 +254,11 @@ class _TodoTile extends ConsumerWidget {
       child: ListTile(
         leading: Checkbox(
           value: item.isCompleted,
-          onChanged: (value) {
+          onChanged: (value) async {
             if (value == null) return;
-            repository.toggleComplete(item, value);
+            await repository.toggleComplete(item, value);
+            await HapticsService.success(
+                enabled: ref.read(hapticsEnabledProvider));
           },
         ),
         title: Text(
@@ -265,14 +278,18 @@ class _TodoTile extends ConsumerWidget {
                 final result = await showTodoDialog(context, existing: item);
                 if (result == null || !context.mounted) return;
                 await repository.update(result);
+                await HapticsService.success(
+                    enabled: ref.read(hapticsEnabledProvider));
               },
             ),
             IconButton(
               tooltip: 'Delete task',
               icon: const Icon(Icons.delete_outline),
-              onPressed: () {
+              onPressed: () async {
                 if (item.id != null) {
-                  repository.delete(item.id!);
+                  await repository.delete(item.id!);
+                  await HapticsService.destructive(
+                      enabled: ref.read(hapticsEnabledProvider));
                 }
               },
             ),

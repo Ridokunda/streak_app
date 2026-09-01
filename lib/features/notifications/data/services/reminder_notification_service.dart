@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:app_settings/app_settings.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -8,10 +9,13 @@ import '../../../streaks/data/models/streak.dart';
 class ReminderNotificationService {
   ReminderNotificationService._();
 
-  static final ReminderNotificationService instance = ReminderNotificationService._();
+  static final ReminderNotificationService instance =
+      ReminderNotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _globallyEnabled = false;
   static const int _maxStreakReminderSlots = 100;
   static const int _streakReminderHorizonDays = 14;
 
@@ -36,17 +40,51 @@ class ReminderNotificationService {
     );
 
     await _plugin.initialize(settings: settings);
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-    await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
-    await _plugin
-        .resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
-
     _initialized = true;
+  }
+
+  void configureGlobalEnabled(bool enabled) {
+    _globallyEnabled = enabled;
+  }
+
+  Future<bool> requestPermission() async {
+    await initialize();
+    final results = <bool?>[
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission(),
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true),
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true),
+    ].whereType<bool>().toList();
+    return results.isEmpty || results.every((granted) => granted);
+  }
+
+  Future<bool> notificationsAllowed() async {
+    await initialize();
+    final android = await _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.areNotificationsEnabled();
+    final ios = await _plugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.checkPermissions();
+    final macos = await _plugin
+        .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin>()
+        ?.checkPermissions();
+    return android ?? ios?.isEnabled ?? macos?.isEnabled ?? true;
+  }
+
+  Future<void> openSystemNotificationSettings() {
+    return AppSettings.openAppSettings(type: AppSettingsType.notification);
   }
 
   Future<void> syncStreakReminders(Streak streak) async {
@@ -57,7 +95,9 @@ class ReminderNotificationService {
     await initialize();
     await cancelStreakReminders(streak.id!);
 
-    if (!streak.remindersEnabled || streak.reminderTimes.isEmpty) {
+    if (!_globallyEnabled ||
+        !streak.remindersEnabled ||
+        streak.reminderTimes.isEmpty) {
       return;
     }
 
@@ -66,7 +106,9 @@ class ReminderNotificationService {
       now: tz.TZDateTime.now(tz.local),
     );
 
-    for (var index = 0; index < occurrences.length && index < _maxStreakReminderSlots; index++) {
+    for (var index = 0;
+        index < occurrences.length && index < _maxStreakReminderSlots;
+        index++) {
       final scheduledDate = occurrences[index];
 
       await _plugin.zonedSchedule(
@@ -109,6 +151,11 @@ class ReminderNotificationService {
     }
   }
 
+  Future<void> clearAllNotifications() async {
+    await initialize();
+    await _plugin.cancelAll();
+  }
+
   Future<void> syncTodoReminder({
     required int todoId,
     required String title,
@@ -119,7 +166,10 @@ class ReminderNotificationService {
     await initialize();
     await cancelTodoReminder(todoId);
 
-    if (!reminderEnabled || isCompleted || reminderAt == null) {
+    if (!_globallyEnabled ||
+        !reminderEnabled ||
+        isCompleted ||
+        reminderAt == null) {
       return;
     }
 
@@ -170,7 +220,9 @@ class ReminderNotificationService {
     final uniqueTimes = streak.reminderTimes.toSet().toList()..sort();
     final occurrences = <tz.TZDateTime>[];
 
-    for (var dayOffset = 0; dayOffset < _streakReminderHorizonDays; dayOffset++) {
+    for (var dayOffset = 0;
+        dayOffset < _streakReminderHorizonDays;
+        dayOffset++) {
       final date = now.add(Duration(days: dayOffset));
       if (streak.completedToday && _isSameCalendarDay(date, now)) {
         continue;
@@ -203,6 +255,8 @@ class ReminderNotificationService {
   }
 
   bool _isSameCalendarDay(tz.TZDateTime first, tz.TZDateTime second) {
-    return first.year == second.year && first.month == second.month && first.day == second.day;
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
   }
 }

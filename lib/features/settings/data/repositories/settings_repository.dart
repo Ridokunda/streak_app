@@ -8,12 +8,15 @@ class SettingsRepository {
 
   final AppDatabase? _db;
 
-  Future<AppDatabase> get _dbInstance async => _db ?? await AppDatabase.instance();
+  Future<AppDatabase> get _dbInstance async =>
+      _db ?? await AppDatabase.instance();
 
   Stream<AppSettings> watchSettings() async* {
     final db = await _dbInstance;
 
-    yield* (db.select(db.appSettingsTable)..where((t) => t.id.equals(1))).watch().map((rows) {
+    yield* (db.select(db.appSettingsTable)..where((t) => t.id.equals(1)))
+        .watch()
+        .map((rows) {
       if (rows.isEmpty) {
         return AppSettings();
       }
@@ -23,31 +26,50 @@ class SettingsRepository {
 
   Future<AppSettings> getSettings() async {
     final db = await _dbInstance;
-    final row = await (db.select(db.appSettingsTable)..where((t) => t.id.equals(1))).getSingleOrNull();
+    final rows = await (db.select(db.appSettingsTable)
+          ..where((t) => t.id.equals(1)))
+        .get();
 
-    if (row != null) {
-      return _fromRow(row);
+    if (rows.isNotEmpty) {
+      return _fromRow(rows.first);
     }
 
-    final defaults = AppSettingsTableCompanion.insert();
+    final defaults = AppSettingsTableCompanion.insert(
+      darkMode: const Value(false),
+      notificationsEnabled: const Value(false),
+      hapticsEnabled: const Value(true),
+      themeMode: Value(AppThemeMode.system.name),
+    );
     await db.into(db.appSettingsTable).insertOnConflictUpdate(defaults);
     return AppSettings();
   }
 
   Future<void> saveSettings(AppSettings settings) async {
     final db = await _dbInstance;
-    await db.into(db.appSettingsTable).insertOnConflictUpdate(
-          AppSettingsTableCompanion.insert(
-            darkMode: Value(settings.darkMode),
-            notificationsEnabled: Value(settings.notificationsEnabled),
-            hapticsEnabled: Value(settings.hapticsEnabled),
-          ),
-        );
+    final companion = AppSettingsTableCompanion(
+      darkMode: Value(settings.themeMode == AppThemeMode.dark),
+      notificationsEnabled: Value(settings.notificationsEnabled),
+      hapticsEnabled: Value(settings.hapticsEnabled),
+      themeMode: Value(settings.themeMode.name),
+    );
+    final updated = await (db.update(db.appSettingsTable)
+          ..where((t) => t.id.equals(1)))
+        .write(companion);
+    if (updated == 0) {
+      await db.into(db.appSettingsTable).insert(
+            AppSettingsTableCompanion.insert(
+              darkMode: companion.darkMode,
+              notificationsEnabled: companion.notificationsEnabled,
+              hapticsEnabled: companion.hapticsEnabled,
+              themeMode: companion.themeMode,
+            ),
+          );
+    }
   }
 
-  Future<void> updateDarkMode(bool enabled) async {
+  Future<void> updateThemeMode(AppThemeMode themeMode) async {
     final settings = await getSettings();
-    await saveSettings(settings.copyWith(darkMode: enabled));
+    await saveSettings(settings.copyWith(themeMode: themeMode));
   }
 
   Future<void> updateNotifications(bool enabled) async {
@@ -62,7 +84,10 @@ class SettingsRepository {
 
   AppSettings _fromRow(AppSettingsTableData row) {
     return AppSettings(
-      darkMode: row.darkMode,
+      themeMode: AppThemeMode.values.firstWhere(
+        (value) => value.name == row.themeMode,
+        orElse: () => row.darkMode ? AppThemeMode.dark : AppThemeMode.light,
+      ),
       notificationsEnabled: row.notificationsEnabled,
       hapticsEnabled: row.hapticsEnabled,
     );

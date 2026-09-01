@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/enums/frequency.dart';
 import '../../data/models/streak.dart';
 import '../providers/streak_provider.dart';
+import '../../../settings/data/services/haptics_service.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 
 class CreateStreakPage extends ConsumerStatefulWidget {
   const CreateStreakPage({super.key});
@@ -21,7 +23,15 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
   final Set<int> _selectedDays = <int>{};
   bool _remindersEnabled = false;
   final List<TimeOfDay> _reminderTimes = <TimeOfDay>[];
-  static const List<String> _weekdayLabels = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const List<String> _weekdayLabels = <String>[
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun'
+  ];
 
   @override
   void dispose() {
@@ -37,7 +47,9 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
 
     if (_frequency == Frequency.custom && _selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one day for custom frequency.')),
+        const SnackBar(
+            content:
+                Text('Please select at least one day for custom frequency.')),
       );
       return;
     }
@@ -57,7 +69,8 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
             ? null
             : _descriptionController.text.trim(),
         frequency: _frequency,
-        scheduledDays: _frequency == Frequency.custom ? _selectedDays.toList() : const [],
+        scheduledDays:
+            _frequency == Frequency.custom ? _selectedDays.toList() : const [],
         remindersEnabled: _remindersEnabled,
         reminderTimes: _reminderTimes
             .map((time) => (time.hour * 60) + time.minute)
@@ -67,6 +80,7 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
         createdAt: DateTime.now(),
       ),
     );
+    await HapticsService.success(enabled: ref.read(hapticsEnabledProvider));
 
     if (!mounted) return;
     context.go('/streaks/$createdId');
@@ -83,7 +97,8 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
   }
 
   Future<void> _pickReminderTime({int? editIndex}) async {
-    final initialTime = editIndex == null ? TimeOfDay.now() : _reminderTimes[editIndex];
+    final initialTime =
+        editIndex == null ? TimeOfDay.now() : _reminderTimes[editIndex];
     final picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
@@ -227,7 +242,8 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Enable reminders'),
-                        subtitle: const Text('Receive local notifications for this streak.'),
+                        subtitle: const Text(
+                            'Receive local notifications for this streak.'),
                         value: _remindersEnabled,
                         onChanged: (value) {
                           setState(() {
@@ -244,14 +260,16 @@ class _CreateStreakPageState extends ConsumerState<CreateStreakPage> {
                             final time = _reminderTimes[index];
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.notifications_active_outlined),
+                              leading: const Icon(
+                                  Icons.notifications_active_outlined),
                               title: Text(_formatTime(time)),
                               trailing: Wrap(
                                 spacing: 4,
                                 children: [
                                   IconButton(
                                     tooltip: 'Edit reminder time',
-                                    onPressed: () => _pickReminderTime(editIndex: index),
+                                    onPressed: () =>
+                                        _pickReminderTime(editIndex: index),
                                     icon: const Icon(Icons.edit_outlined),
                                   ),
                                   IconButton(

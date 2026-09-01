@@ -15,16 +15,19 @@ class StreaksTable extends Table {
   TextColumn get scheduledDays => text().withDefault(const Constant('[]'))();
   IntColumn get reminderHour => integer().withDefault(const Constant(20))();
   IntColumn get reminderMinute => integer().withDefault(const Constant(0))();
-  BoolColumn get remindersEnabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get remindersEnabled =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get reminderTimes => text().withDefault(const Constant('[]'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get lastCompleted => dateTime().nullable()();
-  BoolColumn get completedToday => boolean().withDefault(const Constant(false))();
+  BoolColumn get completedToday =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastFreezeUsed => dateTime().nullable()();
   IntColumn get currentStreak => integer().withDefault(const Constant(0))();
   IntColumn get longestStreak => integer().withDefault(const Constant(0))();
   IntColumn get freezeCount => integer().withDefault(const Constant(0))();
-  IntColumn get completedSinceFreeze => integer().withDefault(const Constant(0))();
+  IntColumn get completedSinceFreeze =>
+      integer().withDefault(const Constant(0))();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 }
 
@@ -38,8 +41,14 @@ class CompletionsTable extends Table {
 class AppSettingsTable extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
   BoolColumn get darkMode => boolean().withDefault(const Constant(true))();
-  BoolColumn get notificationsEnabled => boolean().withDefault(const Constant(true))();
-  BoolColumn get hapticsEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get notificationsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get hapticsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  TextColumn get themeMode => text().withDefault(const Constant('system'))();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {id};
 }
 
 class AchievementsTable extends Table {
@@ -54,7 +63,8 @@ class TodosTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
-  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderEnabled =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get reminderAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 }
@@ -79,13 +89,14 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (migrator, from, to) async {
           if (from < 2) {
-            await migrator.addColumn(streaksTable, streaksTable.remindersEnabled);
+            await migrator.addColumn(
+                streaksTable, streaksTable.remindersEnabled);
             await migrator.addColumn(streaksTable, streaksTable.reminderTimes);
           }
           if (from < 3) {
@@ -96,6 +107,13 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 5) {
             await migrator.addColumn(streaksTable, streaksTable.completedToday);
+          }
+          if (from < 6) {
+            await migrator.addColumn(
+                appSettingsTable, appSettingsTable.themeMode);
+            await customStatement(
+              "UPDATE app_settings_table SET theme_mode = CASE WHEN dark_mode = 1 THEN 'dark' ELSE 'light' END",
+            );
           }
         },
       );

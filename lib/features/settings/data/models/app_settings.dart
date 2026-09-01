@@ -1,25 +1,31 @@
-﻿class AppSettings {
-  int id = 1;
+enum AppThemeMode { system, light, dark }
 
-  bool darkMode = true;
-
-  bool notificationsEnabled = true;
-
-  bool hapticsEnabled = true;
-
+class AppSettings {
   AppSettings({
-    this.darkMode = true,
-    this.notificationsEnabled = true,
+    AppThemeMode? themeMode,
+    bool? darkMode,
+    this.notificationsEnabled = false,
     this.hapticsEnabled = true,
-  });
+  }) : themeMode = themeMode ??
+            (darkMode == null
+                ? AppThemeMode.system
+                : darkMode
+                    ? AppThemeMode.dark
+                    : AppThemeMode.light);
+
+  final AppThemeMode themeMode;
+  final bool notificationsEnabled;
+  final bool hapticsEnabled;
+
+  bool get darkMode => themeMode == AppThemeMode.dark;
 
   AppSettings copyWith({
-    bool? darkMode,
+    AppThemeMode? themeMode,
     bool? notificationsEnabled,
     bool? hapticsEnabled,
   }) {
     return AppSettings(
-      darkMode: darkMode ?? this.darkMode,
+      themeMode: themeMode ?? this.themeMode,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
     );

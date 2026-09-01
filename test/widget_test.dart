@@ -40,7 +40,8 @@ void main() {
       ProviderScope(
         overrides: [
           defaultSettingsOverride,
-          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+          streakListProvider
+              .overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
       ),
@@ -62,7 +63,8 @@ void main() {
       ProviderScope(
         overrides: [
           defaultSettingsOverride,
-          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+          streakListProvider
+              .overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
       ),
@@ -84,7 +86,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+          streakListProvider
+              .overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: const MaterialApp(home: DashboardPage()),
       ),
@@ -111,12 +114,14 @@ void main() {
     expect(find.text('Mon'), findsOneWidget);
   });
 
-  testWidgets('shows validation errors for invalid streak title', (tester) async {
+  testWidgets('shows validation errors for invalid streak title',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           defaultSettingsOverride,
-          streakListProvider.overrideWith((ref) => Stream<List<Streak>>.value(const [])),
+          streakListProvider
+              .overrideWith((ref) => Stream<List<Streak>>.value(const [])),
         ],
         child: StreakApp(),
       ),
@@ -195,7 +200,8 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('shows unlocked badge chips on dashboard streak tile', (tester) async {
+  testWidgets('shows unlocked badge chips on dashboard streak tile',
+      (tester) async {
     tester.view.physicalSize = const Size(400, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -230,7 +236,8 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
   });
 
-  testWidgets('shows settings toggles from persisted settings state', (tester) async {
+  testWidgets('shows settings toggles from persisted settings state',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -250,7 +257,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Dark mode'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('System'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
     expect(find.text('Notifications enabled'), findsOneWidget);
     expect(find.text('Haptics enabled'), findsOneWidget);
   });
@@ -259,7 +269,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          todoListProvider.overrideWith((ref) => Stream<List<TodoItem>>.value(const [])),
+          todoListProvider
+              .overrideWith((ref) => Stream<List<TodoItem>>.value(const [])),
         ],
         child: const MaterialApp(home: TodoPage()),
       ),

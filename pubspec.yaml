@@ -50,6 +50,9 @@ dependencies:
   shared_preferences: ^2.5.5
   path_provider: ^2.1.6
   path: ^1.9.1
+  app_settings: ^9.0.0
+  package_info_plus: ^10.2.1
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

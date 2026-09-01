@@ -8,6 +8,8 @@ import '../../data/models/completion.dart';
 import '../../data/models/monthly_completion_summary.dart';
 import '../../data/models/streak.dart';
 import '../providers/streak_provider.dart';
+import '../../../settings/data/services/haptics_service.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 
 class StreakDetailPage extends ConsumerStatefulWidget {
   const StreakDetailPage({super.key, required this.streakId});
@@ -52,12 +54,14 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
   Future<void> _markCompleted() async {
     final repository = ref.read(streakRepositoryProvider);
     await repository.markCompleted(widget.streakId);
+    await HapticsService.success(enabled: ref.read(hapticsEnabledProvider));
     setState(_loadData);
   }
 
   Future<void> _deleteStreak() async {
     final repository = ref.read(streakRepositoryProvider);
     await repository.delete(widget.streakId);
+    await HapticsService.destructive(enabled: ref.read(hapticsEnabledProvider));
 
     if (mounted) {
       context.pop();
@@ -111,6 +115,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     }
 
     await repository.update(streak);
+    await HapticsService.selection(enabled: ref.read(hapticsEnabledProvider));
     setState(_loadData);
   }
 
@@ -129,6 +134,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     streak.reminderTimes = times;
     streak.remindersEnabled = true;
     await repository.update(streak);
+    await HapticsService.success(enabled: ref.read(hapticsEnabledProvider));
     setState(_loadData);
   }
 
@@ -147,6 +153,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
     updated[index] = (picked.hour * 60) + picked.minute;
     streak.reminderTimes = updated.toSet().toList()..sort();
     await repository.update(streak);
+    await HapticsService.success(enabled: ref.read(hapticsEnabledProvider));
     setState(_loadData);
   }
 
@@ -158,6 +165,7 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
       streak.remindersEnabled = false;
     }
     await repository.update(streak);
+    await HapticsService.destructive(enabled: ref.read(hapticsEnabledProvider));
     setState(_loadData);
   }
 

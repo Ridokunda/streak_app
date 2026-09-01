@@ -12,17 +12,25 @@ class TodoRepository {
   final AppDatabase? _db;
   final bool _syncNotifications;
 
-  Future<AppDatabase> get _dbInstance async => _db ?? await AppDatabase.instance();
+  Future<AppDatabase> get _dbInstance async =>
+      _db ?? await AppDatabase.instance();
 
   Stream<List<TodoItem>> watchAll() async* {
     final db = await _dbInstance;
     yield* (db.select(db.todosTable)
           ..orderBy([
-            (t) => OrderingTerm(expression: t.isCompleted, mode: OrderingMode.asc),
+            (t) =>
+                OrderingTerm(expression: t.isCompleted, mode: OrderingMode.asc),
             (t) => OrderingTerm.desc(t.createdAt),
           ]))
         .watch()
         .map((rows) => rows.map(_fromRow).toList());
+  }
+
+  Future<List<TodoItem>> getAll() async {
+    final db = await _dbInstance;
+    final rows = await db.select(db.todosTable).get();
+    return rows.map(_fromRow).toList();
   }
 
   Future<int> add(TodoItem item) async {

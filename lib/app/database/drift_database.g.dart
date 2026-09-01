@@ -1186,9 +1186,17 @@ class $AppSettingsTableTable extends AppSettingsTable
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("haptics_enabled" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _themeModeMeta =
+      const VerificationMeta('themeMode');
+  @override
+  late final GeneratedColumn<String> themeMode = GeneratedColumn<String>(
+      'theme_mode', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('system'));
   @override
   List<GeneratedColumn> get $columns =>
-      [id, darkMode, notificationsEnabled, hapticsEnabled];
+      [id, darkMode, notificationsEnabled, hapticsEnabled, themeMode];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1219,11 +1227,15 @@ class $AppSettingsTableTable extends AppSettingsTable
           hapticsEnabled.isAcceptableOrUnknown(
               data['haptics_enabled']!, _hapticsEnabledMeta));
     }
+    if (data.containsKey('theme_mode')) {
+      context.handle(_themeModeMeta,
+          themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta));
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => const {};
+  Set<GeneratedColumn> get $primaryKey => {id};
   @override
   AppSettingsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -1236,6 +1248,8 @@ class $AppSettingsTableTable extends AppSettingsTable
           DriftSqlType.bool, data['${effectivePrefix}notifications_enabled'])!,
       hapticsEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}haptics_enabled'])!,
+      themeMode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}theme_mode'])!,
     );
   }
 
@@ -1251,11 +1265,13 @@ class AppSettingsTableData extends DataClass
   final bool darkMode;
   final bool notificationsEnabled;
   final bool hapticsEnabled;
+  final String themeMode;
   const AppSettingsTableData(
       {required this.id,
       required this.darkMode,
       required this.notificationsEnabled,
-      required this.hapticsEnabled});
+      required this.hapticsEnabled,
+      required this.themeMode});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1263,6 +1279,7 @@ class AppSettingsTableData extends DataClass
     map['dark_mode'] = Variable<bool>(darkMode);
     map['notifications_enabled'] = Variable<bool>(notificationsEnabled);
     map['haptics_enabled'] = Variable<bool>(hapticsEnabled);
+    map['theme_mode'] = Variable<String>(themeMode);
     return map;
   }
 
@@ -1272,6 +1289,7 @@ class AppSettingsTableData extends DataClass
       darkMode: Value(darkMode),
       notificationsEnabled: Value(notificationsEnabled),
       hapticsEnabled: Value(hapticsEnabled),
+      themeMode: Value(themeMode),
     );
   }
 
@@ -1284,6 +1302,7 @@ class AppSettingsTableData extends DataClass
       notificationsEnabled:
           serializer.fromJson<bool>(json['notificationsEnabled']),
       hapticsEnabled: serializer.fromJson<bool>(json['hapticsEnabled']),
+      themeMode: serializer.fromJson<String>(json['themeMode']),
     );
   }
   @override
@@ -1294,6 +1313,7 @@ class AppSettingsTableData extends DataClass
       'darkMode': serializer.toJson<bool>(darkMode),
       'notificationsEnabled': serializer.toJson<bool>(notificationsEnabled),
       'hapticsEnabled': serializer.toJson<bool>(hapticsEnabled),
+      'themeMode': serializer.toJson<String>(themeMode),
     };
   }
 
@@ -1301,12 +1321,14 @@ class AppSettingsTableData extends DataClass
           {int? id,
           bool? darkMode,
           bool? notificationsEnabled,
-          bool? hapticsEnabled}) =>
+          bool? hapticsEnabled,
+          String? themeMode}) =>
       AppSettingsTableData(
         id: id ?? this.id,
         darkMode: darkMode ?? this.darkMode,
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
+        themeMode: themeMode ?? this.themeMode,
       );
   AppSettingsTableData copyWithCompanion(AppSettingsTableCompanion data) {
     return AppSettingsTableData(
@@ -1318,6 +1340,7 @@ class AppSettingsTableData extends DataClass
       hapticsEnabled: data.hapticsEnabled.present
           ? data.hapticsEnabled.value
           : this.hapticsEnabled,
+      themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
     );
   }
 
@@ -1327,14 +1350,15 @@ class AppSettingsTableData extends DataClass
           ..write('id: $id, ')
           ..write('darkMode: $darkMode, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
-          ..write('hapticsEnabled: $hapticsEnabled')
+          ..write('hapticsEnabled: $hapticsEnabled, ')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, darkMode, notificationsEnabled, hapticsEnabled);
+  int get hashCode => Object.hash(
+      id, darkMode, notificationsEnabled, hapticsEnabled, themeMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1342,7 +1366,8 @@ class AppSettingsTableData extends DataClass
           other.id == this.id &&
           other.darkMode == this.darkMode &&
           other.notificationsEnabled == this.notificationsEnabled &&
-          other.hapticsEnabled == this.hapticsEnabled);
+          other.hapticsEnabled == this.hapticsEnabled &&
+          other.themeMode == this.themeMode);
 }
 
 class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
@@ -1350,27 +1375,27 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
   final Value<bool> darkMode;
   final Value<bool> notificationsEnabled;
   final Value<bool> hapticsEnabled;
-  final Value<int> rowid;
+  final Value<String> themeMode;
   const AppSettingsTableCompanion({
     this.id = const Value.absent(),
     this.darkMode = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.hapticsEnabled = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   AppSettingsTableCompanion.insert({
     this.id = const Value.absent(),
     this.darkMode = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.hapticsEnabled = const Value.absent(),
-    this.rowid = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   static Insertable<AppSettingsTableData> custom({
     Expression<int>? id,
     Expression<bool>? darkMode,
     Expression<bool>? notificationsEnabled,
     Expression<bool>? hapticsEnabled,
-    Expression<int>? rowid,
+    Expression<String>? themeMode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1378,7 +1403,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       if (notificationsEnabled != null)
         'notifications_enabled': notificationsEnabled,
       if (hapticsEnabled != null) 'haptics_enabled': hapticsEnabled,
-      if (rowid != null) 'rowid': rowid,
+      if (themeMode != null) 'theme_mode': themeMode,
     });
   }
 
@@ -1387,13 +1412,13 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       Value<bool>? darkMode,
       Value<bool>? notificationsEnabled,
       Value<bool>? hapticsEnabled,
-      Value<int>? rowid}) {
+      Value<String>? themeMode}) {
     return AppSettingsTableCompanion(
       id: id ?? this.id,
       darkMode: darkMode ?? this.darkMode,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
-      rowid: rowid ?? this.rowid,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -1412,8 +1437,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     if (hapticsEnabled.present) {
       map['haptics_enabled'] = Variable<bool>(hapticsEnabled.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (themeMode.present) {
+      map['theme_mode'] = Variable<String>(themeMode.value);
     }
     return map;
   }
@@ -1425,7 +1450,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
           ..write('darkMode: $darkMode, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
           ..write('hapticsEnabled: $hapticsEnabled, ')
-          ..write('rowid: $rowid')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
@@ -2542,7 +2567,7 @@ typedef $$AppSettingsTableTableCreateCompanionBuilder
   Value<bool> darkMode,
   Value<bool> notificationsEnabled,
   Value<bool> hapticsEnabled,
-  Value<int> rowid,
+  Value<String> themeMode,
 });
 typedef $$AppSettingsTableTableUpdateCompanionBuilder
     = AppSettingsTableCompanion Function({
@@ -2550,7 +2575,7 @@ typedef $$AppSettingsTableTableUpdateCompanionBuilder
   Value<bool> darkMode,
   Value<bool> notificationsEnabled,
   Value<bool> hapticsEnabled,
-  Value<int> rowid,
+  Value<String> themeMode,
 });
 
 class $$AppSettingsTableTableFilterComposer
@@ -2575,6 +2600,9 @@ class $$AppSettingsTableTableFilterComposer
   ColumnFilters<bool> get hapticsEnabled => $composableBuilder(
       column: $table.hapticsEnabled,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get themeMode => $composableBuilder(
+      column: $table.themeMode, builder: (column) => ColumnFilters(column));
 }
 
 class $$AppSettingsTableTableOrderingComposer
@@ -2599,6 +2627,9 @@ class $$AppSettingsTableTableOrderingComposer
   ColumnOrderings<bool> get hapticsEnabled => $composableBuilder(
       column: $table.hapticsEnabled,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get themeMode => $composableBuilder(
+      column: $table.themeMode, builder: (column) => ColumnOrderings(column));
 }
 
 class $$AppSettingsTableTableAnnotationComposer
@@ -2621,6 +2652,9 @@ class $$AppSettingsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get hapticsEnabled => $composableBuilder(
       column: $table.hapticsEnabled, builder: (column) => column);
+
+  GeneratedColumn<String> get themeMode =>
+      $composableBuilder(column: $table.themeMode, builder: (column) => column);
 }
 
 class $$AppSettingsTableTableTableManager extends RootTableManager<
@@ -2655,28 +2689,28 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             Value<bool> darkMode = const Value.absent(),
             Value<bool> notificationsEnabled = const Value.absent(),
             Value<bool> hapticsEnabled = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
+            Value<String> themeMode = const Value.absent(),
           }) =>
               AppSettingsTableCompanion(
             id: id,
             darkMode: darkMode,
             notificationsEnabled: notificationsEnabled,
             hapticsEnabled: hapticsEnabled,
-            rowid: rowid,
+            themeMode: themeMode,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<bool> darkMode = const Value.absent(),
             Value<bool> notificationsEnabled = const Value.absent(),
             Value<bool> hapticsEnabled = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
+            Value<String> themeMode = const Value.absent(),
           }) =>
               AppSettingsTableCompanion.insert(
             id: id,
             darkMode: darkMode,
             notificationsEnabled: notificationsEnabled,
             hapticsEnabled: hapticsEnabled,
-            rowid: rowid,
+            themeMode: themeMode,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
