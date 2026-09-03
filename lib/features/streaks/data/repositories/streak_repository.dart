@@ -108,8 +108,11 @@ class StreakRepository {
 
     final completedCount = completedDates.length;
     final missedCount = missedDates.length;
-    final dayOfTheMonth = DateTime.now().day;
-    final completionRate = (completedCount / dayOfTheMonth) * 100;
+    final today = DateTime.now();
+    final isCurrentMonth = normalizedMonth.year == today.year &&
+        normalizedMonth.month == today.month;
+    final elapsedDays = isCurrentMonth ? today.day : totalDaysInMonth;
+    final completionRate = (completedCount / elapsedDays) * 100;
 
     return MonthlyCompletionSummary(
       month: normalizedMonth,

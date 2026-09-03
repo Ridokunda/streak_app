@@ -256,9 +256,25 @@ void main() {
     expect(summary.month.month, 3);
     expect(summary.completedCount, 11);
     expect(summary.missedCount, 20);
-    final expectedCompletionRate = 11 / DateTime.now().day * 100;
-    expect(summary.completionRate, closeTo(expectedCompletionRate, 0.1));
+    expect(summary.completionRate, closeTo(35.48, 0.1));
     expect(summary.completedDates.contains(DateTime(2026, 3, 1)), isTrue);
     expect(summary.missedDates.contains(DateTime(2026, 3, 3)), isTrue);
+  });
+
+  test('uses elapsed days for the current month completion rate', () async {
+    final streakId = await createDailyStreak();
+    final today = DateTime.now();
+
+    await repository.markCompleted(
+      streakId,
+      completedDate: DateTime(today.year, today.month, 1),
+    );
+
+    final summary = await repository.getMonthlyCompletionSummary(
+      streakId,
+      today,
+    );
+
+    expect(summary.completionRate, closeTo(100 / today.day, 0.1));
   });
 }
