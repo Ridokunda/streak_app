@@ -89,7 +89,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +114,25 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               "UPDATE app_settings_table SET theme_mode = CASE WHEN dark_mode = 1 THEN 'dark' ELSE 'light' END",
             );
+          }
+          if (from < 7) {
+            // Older installs created this table before `id` was declared as its
+            // primary key. Rebuild it so Drift's ON CONFLICT(id) upserts are
+            // backed by the unique constraint SQLite requires.
+            await customStatement(
+              'ALTER TABLE app_settings_table '
+              'RENAME TO app_settings_table_legacy',
+            );
+            await migrator.createTable(appSettingsTable);
+            await customStatement(
+              'INSERT INTO app_settings_table '
+              '(id, dark_mode, notifications_enabled, haptics_enabled, theme_mode) '
+              'SELECT 1, dark_mode, notifications_enabled, haptics_enabled, theme_mode '
+              'FROM app_settings_table_legacy '
+              'ORDER BY CASE WHEN id = 1 THEN 0 ELSE 1 END, rowid '
+              'LIMIT 1',
+            );
+            await customStatement('DROP TABLE app_settings_table_legacy');
           }
         },
       );

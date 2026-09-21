@@ -35,6 +35,7 @@ class SettingsRepository {
     }
 
     final defaults = AppSettingsTableCompanion.insert(
+      id: const Value(1),
       darkMode: const Value(false),
       notificationsEnabled: const Value(false),
       hapticsEnabled: const Value(true),
@@ -58,6 +59,7 @@ class SettingsRepository {
     if (updated == 0) {
       await db.into(db.appSettingsTable).insert(
             AppSettingsTableCompanion.insert(
+              id: const Value(1),
               darkMode: companion.darkMode,
               notificationsEnabled: companion.notificationsEnabled,
               hapticsEnabled: companion.hapticsEnabled,

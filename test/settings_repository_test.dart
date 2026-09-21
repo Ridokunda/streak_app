@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'package:streak_app/app/database/drift_database.dart';
 import 'package:streak_app/core/enums/frequency.dart';
@@ -15,15 +19,21 @@ import 'package:streak_app/features/todos/data/repositories/todo_repository.dart
 void main() {
   late AppDatabase db;
   late SettingsRepository settingsRepository;
+  var dbIsClosed = false;
   var clearCalls = 0;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     settingsRepository = SettingsRepository(db: db);
+    dbIsClosed = false;
     clearCalls = 0;
   });
 
-  tearDown(() => db.close());
+  tearDown(() async {
+    if (!dbIsClosed) {
+      await db.close();
+    }
+  });
 
   test('new settings default to system theme with notifications off', () async {
     final settings = await settingsRepository.getSettings();
@@ -45,6 +55,58 @@ void main() {
     expect(settings.themeMode, AppThemeMode.dark);
     expect(settings.notificationsEnabled, isTrue);
     expect(settings.hapticsEnabled, isFalse);
+  });
+
+  test('migrates legacy settings table before using conflict updates',
+      () async {
+    await db.close();
+    dbIsClosed = true;
+    final directory = await Directory.systemTemp.createTemp('streak_settings_');
+    final databaseFile = File('${directory.path}/legacy.sqlite');
+    final legacyDb = sqlite.sqlite3.open(databaseFile.path);
+    legacyDb.execute('''
+      CREATE TABLE app_settings_table (
+        id INTEGER NOT NULL DEFAULT 1,
+        dark_mode INTEGER NOT NULL DEFAULT 1 CHECK (dark_mode IN (0, 1)),
+        notifications_enabled INTEGER NOT NULL DEFAULT 1
+          CHECK (notifications_enabled IN (0, 1)),
+        haptics_enabled INTEGER NOT NULL DEFAULT 1
+          CHECK (haptics_enabled IN (0, 1)),
+        theme_mode TEXT NOT NULL DEFAULT 'system'
+      );
+      INSERT INTO app_settings_table
+        (id, dark_mode, notifications_enabled, haptics_enabled, theme_mode)
+      VALUES (1, 1, 0, 1, 'dark');
+      PRAGMA user_version = 6;
+    ''');
+    legacyDb.dispose();
+
+    final migratedDb = AppDatabase.forTesting(NativeDatabase(databaseFile));
+    final repository = SettingsRepository(db: migratedDb);
+    try {
+      final original = await repository.getSettings();
+      expect(original.themeMode, AppThemeMode.dark);
+      expect(original.notificationsEnabled, isFalse);
+      expect(original.hapticsEnabled, isTrue);
+
+      await migratedDb.into(migratedDb.appSettingsTable).insertOnConflictUpdate(
+            AppSettingsTableCompanion.insert(
+              id: const Value(1),
+              darkMode: const Value(false),
+              notificationsEnabled: const Value(true),
+              hapticsEnabled: const Value(false),
+              themeMode: const Value('light'),
+            ),
+          );
+
+      final updated = await repository.getSettings();
+      expect(updated.themeMode, AppThemeMode.light);
+      expect(updated.notificationsEnabled, isTrue);
+      expect(updated.hapticsEnabled, isFalse);
+    } finally {
+      await migratedDb.close();
+      await directory.delete(recursive: true);
+    }
   });
 
   test('export document is versioned and serializes local data', () async {
