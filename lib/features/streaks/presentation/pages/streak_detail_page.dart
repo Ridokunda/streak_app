@@ -20,7 +20,8 @@ class StreakDetailPage extends ConsumerStatefulWidget {
   ConsumerState<StreakDetailPage> createState() => _StreakDetailPageState();
 }
 
-class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
+class _StreakDetailPageState extends ConsumerState<StreakDetailPage>
+    with WidgetsBindingObserver {
   late Future<Streak?> _streakFuture;
   late Future<List<Completion>> _completionFuture;
   late Future<MonthlyCompletionSummary> _monthlySummaryFuture;
@@ -29,8 +30,22 @@ class _StreakDetailPageState extends ConsumerState<StreakDetailPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      setState(_loadData);
+    }
   }
 
   void _loadData() {

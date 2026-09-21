@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/database/drift_database.dart';
+import 'features/achievements/presentation/providers/achievement_provider.dart';
 import 'features/streaks/data/repositories/streak_repository.dart';
 import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/settings/data/repositories/settings_repository.dart';
@@ -78,11 +79,50 @@ Future<void> _runStartupMaintenance() async {
   }
 }
 
-class StreakApp extends ConsumerWidget {
+class StreakApp extends ConsumerStatefulWidget {
   const StreakApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StreakApp> createState() => _StreakAppState();
+}
+
+class _StreakAppState extends ConsumerState<StreakApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshBackgroundCompletions());
+    }
+  }
+
+  Future<void> _refreshBackgroundCompletions() async {
+    final database = await AppDatabase.instance();
+    // Notification actions write through a separate engine/database connection.
+    // Tell the foreground streams to read those persisted changes on return.
+    database.markTablesUpdated({
+      database.streaksTable,
+      database.completionsTable,
+      database.achievementsTable,
+    });
+    if (mounted) {
+      ref.invalidate(completionStatsProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(

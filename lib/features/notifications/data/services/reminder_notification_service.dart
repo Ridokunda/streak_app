@@ -1,10 +1,30 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../../app/database/drift_database.dart';
+import '../../../settings/data/repositories/settings_repository.dart';
 import '../../../streaks/data/models/streak.dart';
+import '../../../streaks/data/repositories/streak_repository.dart';
+
+@pragma('vm:entry-point')
+Future<void> onReminderNotificationResponse(
+    NotificationResponse response) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await ReminderNotificationService.instance
+        .handleNotificationResponse(response);
+  } catch (error, stackTrace) {
+    FlutterError.reportError(FlutterErrorDetails(
+      exception: error,
+      stack: stackTrace,
+      library: 'reminder notification action',
+    ));
+  }
+}
 
 class ReminderNotificationService {
   ReminderNotificationService._();
@@ -18,8 +38,10 @@ class ReminderNotificationService {
   bool _globallyEnabled = false;
   static const int _maxStreakReminderSlots = 100;
   static const int _streakReminderHorizonDays = 14;
+  static const String completeStreakAction = 'complete_streak';
+  static const String _streakCategory = 'streak_reminder';
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool requestPermissions = true}) async {
     if (_initialized) {
       return;
     }
@@ -33,14 +55,73 @@ class ReminderNotificationService {
       tz.setLocalLocation(tz.UTC);
     }
 
-    const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
-      macOS: DarwinInitializationSettings(),
+    final darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: requestPermissions,
+      requestBadgePermission: requestPermissions,
+      requestSoundPermission: requestPermissions,
+      notificationCategories: [
+        DarwinNotificationCategory(
+          _streakCategory,
+          actions: [
+            DarwinNotificationAction.plain(
+              completeStreakAction,
+              'Mark completed',
+            ),
+          ],
+        ),
+      ],
+    );
+    final settings = InitializationSettings(
+      android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: darwinSettings,
+      macOS: darwinSettings,
     );
 
-    await _plugin.initialize(settings: settings);
+    await _plugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: onReminderNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          onReminderNotificationResponse,
+    );
     _initialized = true;
+  }
+
+  Future<void> handleNotificationResponse(
+    NotificationResponse response, {
+    AppDatabase? database,
+  }) async {
+    if (response.notificationResponseType !=
+            NotificationResponseType.selectedNotificationAction ||
+        response.actionId != completeStreakAction) {
+      return;
+    }
+    final match = RegExp(r'^streak:(\d+)$').firstMatch(response.payload ?? '');
+    final streakId = match == null ? null : int.tryParse(match.group(1)!);
+    if (streakId == null || streakId <= 0) {
+      return;
+    }
+
+    final db = database ?? await AppDatabase.instance();
+    final repository = StreakRepository(db: db, syncNotifications: false);
+    final streak = await repository.getById(streakId);
+    if (streak == null || streak.archived) {
+      return;
+    }
+
+    // Use the same completion rules and achievement updates as the app. Repeated
+    // taps are safe, and the completion applies to the day the action is tapped.
+    await repository.markCompleted(streakId);
+    final updatedStreak = await repository.getById(streakId);
+    if (updatedStreak == null) {
+      return;
+    }
+
+    // Background engines have their own service instance, so load the persisted
+    // preference before replacing reminders for this streak.
+    final settings = await SettingsRepository(db: db).getSettings();
+    configureGlobalEnabled(settings.notificationsEnabled);
+    await initialize(requestPermissions: false);
+    await syncStreakReminders(updatedStreak);
   }
 
   void configureGlobalEnabled(bool enabled) {
@@ -123,9 +204,17 @@ class ReminderNotificationService {
             channelDescription: 'Reminder notifications for streaks',
             importance: Importance.high,
             priority: Priority.high,
+            actions: [
+              AndroidNotificationAction(
+                completeStreakAction,
+                'Mark completed',
+                showsUserInterface: false,
+                cancelNotification: true,
+              ),
+            ],
           ),
-          iOS: DarwinNotificationDetails(),
-          macOS: DarwinNotificationDetails(),
+          iOS: DarwinNotificationDetails(categoryIdentifier: _streakCategory),
+          macOS: DarwinNotificationDetails(categoryIdentifier: _streakCategory),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         payload: 'streak:${streak.id}',
